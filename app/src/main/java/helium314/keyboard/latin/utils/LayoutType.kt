@@ -3,7 +3,6 @@ package helium314.keyboard.latin.utils
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.common.Constants.Separators
 import helium314.keyboard.latin.common.Constants.Subtype.ExtraValue
-import java.io.File
 import java.util.EnumMap
 
 enum class LayoutType {
@@ -22,7 +21,7 @@ enum class LayoutType {
             return map
         }
 
-        val LayoutType.folder get() = "layouts${File.separator}${name.lowercase()}"
+        val LayoutType.folder get() = "layouts/${name.lowercase()}"
 
         val LayoutType.displayNameId get() = when (this) {
             MAIN -> R.string.subtype_no_language
