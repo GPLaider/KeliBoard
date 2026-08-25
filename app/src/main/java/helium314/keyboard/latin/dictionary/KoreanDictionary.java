@@ -2,7 +2,6 @@
 
 package helium314.keyboard.latin.dictionary;
 
-import helium314.keyboard.event.HangulCombiner;
 import helium314.keyboard.latin.NgramContext;
 import helium314.keyboard.latin.SuggestedWords;
 import helium314.keyboard.latin.common.ComposedData;
@@ -12,14 +11,8 @@ import helium314.keyboard.latin.settings.SettingsValuesForSuggestion;
 import java.text.Normalizer;
 import java.util.ArrayList;
 
-/*
- * For Korean dictionary, there are too many cases of characters to store on dictionary, which makes it slow.
- * To solve that, Unicode normalization is used to decompose Hangul syllables into Hangul jamos.
- */
+/* The recommended Korean dictionary stores precomposed Hangul syllables. */
 public class KoreanDictionary extends Dictionary {
-
-    private static final String COMPAT_JAMO = HangulCombiner.HangulJamo.COMPAT_CONSONANTS + HangulCombiner.HangulJamo.COMPAT_VOWELS;
-    private static final String STANDARD_JAMO = HangulCombiner.HangulJamo.CONVERT_INITIALS + HangulCombiner.HangulJamo.CONVERT_MEDIALS;
 
     private final Dictionary mDictionary;
 
@@ -29,14 +22,7 @@ public class KoreanDictionary extends Dictionary {
     }
 
     private String processInput(String input) {
-        String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
-        StringBuilder result = new StringBuilder();
-        for (char c : normalized.toCharArray()) {
-            int index = COMPAT_JAMO.indexOf(c);
-            if (index == -1) result.append(c);
-            else result.append(STANDARD_JAMO.charAt(index));
-        }
-        return result.toString();
+        return Normalizer.normalize(input, Normalizer.Form.NFC);
     }
 
     private String processOutput(String output) {
