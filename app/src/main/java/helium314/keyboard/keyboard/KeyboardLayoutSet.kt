@@ -19,6 +19,7 @@ import helium314.keyboard.latin.RichInputMethodSubtype
 import helium314.keyboard.latin.RichInputMethodSubtype.Companion.emojiSubtype
 import helium314.keyboard.latin.RichInputMethodSubtype.Companion.noLanguageSubtype
 import helium314.keyboard.latin.settings.Settings
+import helium314.keyboard.latin.settings.SettingsSubtype
 import helium314.keyboard.latin.utils.DictionaryInfoUtils.getLocalesWithEmojiDicts
 import helium314.keyboard.latin.utils.InputTypeUtils
 import helium314.keyboard.latin.utils.Log
@@ -149,8 +150,12 @@ class KeyboardLayoutSet internal constructor(private val mContext: Context, priv
         fun setSubtype(subtype: RichInputMethodSubtype): Builder {
             val asciiCapable = subtype.rawSubtype.isAsciiCapable
             val forceAscii = (params.editorInfo.imeOptions and EditorInfo.IME_FLAG_FORCE_ASCII) != 0
-            params.subtype = if (forceAscii && !asciiCapable) noLanguageSubtype
-                else subtype
+            params.subtype = when {
+                forceAscii && !asciiCapable && params.deviceLocked ->
+                    RichInputMethodSubtype.get(SettingsSubtype.fallbackSubtype.toAdditionalSubtype())
+                forceAscii && !asciiCapable -> noLanguageSubtype
+                else -> subtype
+            }
             return this
         }
 

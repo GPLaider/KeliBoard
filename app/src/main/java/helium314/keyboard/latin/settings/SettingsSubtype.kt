@@ -116,9 +116,9 @@ data class SettingsSubtype(val locale: Locale, val extraValues: String) {
             return SettingsSubtype(locale(), filteredExtraValue)
         }
 
-        // qwerty with all diacritics and all popups enabled
-        val fallbackSubtype = SettingsSubtype("zz".constructLocale(), "").let {
-            var subtype = SettingsSubtype("zz".constructLocale(), "")
+        // English qwerty with all diacritics and all popups enabled
+        val fallbackSubtype = SettingsSubtype(Locale.US, "").let {
+            var subtype = it
                 .with(ExtraValue.MORE_POPUPS, LocaleKeyboardInfos.POPUP_KEYS_ALL)
                 .with(ExtraValue.POPUP_ORDER, POPUP_KEYS_ORDER_DEFAULT)
             LayoutType.entries.forEach { subtype = subtype.withLayout(it, it.default) }

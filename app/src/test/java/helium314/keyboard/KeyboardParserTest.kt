@@ -21,6 +21,7 @@ import helium314.keyboard.keyboard.internal.keyboard_parser.LocaleKeyboardInfos
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.LatinIME
 import helium314.keyboard.latin.RichInputMethodSubtype
+import helium314.keyboard.latin.settings.SettingsSubtype
 import helium314.keyboard.latin.utils.LayoutUtilsCustom
 import helium314.keyboard.latin.utils.POPUP_KEYS_LAYOUT
 import helium314.keyboard.latin.utils.SubtypeUtilsAdditional
@@ -121,6 +122,41 @@ f""", // no newline at the end
                 .map { row -> row.map { it.toKeyParams(params).mLabel } }
             assertEquals(wantedKeyLabels, keyLabels)
         }
+    }
+
+    @Test fun `locked fallback is regular English qwerty with shift and caps lock`() {
+        val fallback = RichInputMethodSubtype.get(SettingsSubtype.fallbackSubtype.toAdditionalSubtype())
+        assertEquals(Locale.US, fallback.locale)
+        assertEquals("qwerty", fallback.mainLayoutName)
+        assertTrue(fallback.rawSubtype.isAsciiCapable)
+
+        val forceAscii = EditorInfo().apply { imeOptions = EditorInfo.IME_FLAG_FORCE_ASCII }
+        val builder = KeyboardLayoutSet.Builder(latinIME, forceAscii)
+        val builderParams = KeyboardLayoutSet.Builder::class.java.getDeclaredField("params").let {
+            it.isAccessible = true
+            it.get(builder) as KeyboardLayoutSet.Params
+        }
+        builderParams.deviceLocked = true
+        val korean = RichInputMethodSubtype.get(SettingsSubtype(Locale.KOREAN, "").toAdditionalSubtype())
+        builder.setSubtype(korean)
+        assertEquals(Locale.US, builderParams.subtype.locale)
+        builderParams.deviceLocked = false
+        builder.setSubtype(korean)
+        assertEquals("zz", builderParams.subtype.locale.language)
+
+        val layoutParams = KeyboardLayoutSet.Params().apply {
+            editorInfo = EditorInfo()
+            subtype = fallback
+        }
+        val key = LayoutParser.parseSimpleString("a").single().single()
+        fun codeFor(element: KeyboardElement): Int {
+            params.mId = KeyboardId(element, layoutParams)
+            return key.compute(params)!!.toKeyParams(params).mCode
+        }
+
+        assertEquals('a'.code, codeFor(KeyboardElement.ALPHABET))
+        assertEquals('A'.code, codeFor(KeyboardElement.ALPHABET_MANUAL_SHIFTED))
+        assertEquals('A'.code, codeFor(KeyboardElement.ALPHABET_SHIFT_LOCKED))
     }
 
     @Test fun simpleKey() {
