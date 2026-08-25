@@ -490,6 +490,18 @@ public final class InputLogic {
         if (GestureDataGatheringKt.useBackgroundGathering && mWordComposer.isComposingWord() && mWordComposer.isCursorFrontOrMiddleOfComposingWord())
             BackgroundGatheringCache.INSTANCE.onEditWord(mWordComposer.getTypedWord());
 
+        // Hangul consumes character events before handleNonSeparatorEvent can handle cursor edits.
+        if ("hangul".equals(mWordComposer.getCombiningSpec()) && !event.isFunctionalKeyEvent()
+                && mWordComposer.isCursorFrontOrMiddleOfComposingWord()) {
+            final boolean isCursorInFront = mWordComposer.isCursorInFrontOfComposingWord();
+            if (!isCursorInFront) {
+                unlearnWord(mWordComposer.getTypedWord(), settingsValues,
+                        DictionaryFacilitator.UnlearnEvent.BACKSPACE);
+            }
+            resetEntireInputState(mConnection.getExpectedSelectionStart(),
+                    mConnection.getExpectedSelectionEnd(), !isCursorInFront);
+        }
+
         Event processedEvent = mWordComposer.processEvent(event);
         InputTransaction inputTransaction = new InputTransaction(settingsValues,
                 processedEvent, SystemClock.uptimeMillis(), mSpaceState,

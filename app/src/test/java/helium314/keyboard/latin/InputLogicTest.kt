@@ -168,19 +168,26 @@ class InputLogicTest {
         assertEquals("\uD83E\uDD70", text)
     }
 
-    // todo: make it work, but it might not be that simple because adding is done in combiner
-    //  https://github.com/HeliBorg/HeliBoard/issues/214
-    @Test fun insertLetterIntoWordHangulFails() {
-        if (BuildConfig.BUILD_TYPE == "runTests") return
+    // https://github.com/HeliBorg/HeliBoard/issues/214
+    @Test fun insertLetterIntoWordHangul() {
         latinIME.switchToSubtype(SubtypeSettings.getResourceSubtypesForLocale("ko".constructLocale()).first())
         chainInput("ㅛㅎㄹㅎㅕㅛ")
         setCursorPosition(3)
-        input('ㄲ') // fails, as expected from the hangul issue when processing the event in onCodeInput
-        assertEquals("ㅛㅎㄹㄲ혀ㅛ", getWordAtCursor())
+        input('ㄲ')
         assertEquals("ㅛㅎㄹㄲ혀ㅛ", getTextFromConnection())
         assertEquals("ㅛㅎㄹㄲ혀ㅛ", textBeforeCursor + textAfterCursor)
         assertEquals(4, getCursorPosition())
         assertEquals(4, cursor)
+    }
+
+    @Test fun insertHangulAtStartOfComposingWord() {
+        latinIME.switchToSubtype(SubtypeSettings.getResourceSubtypesForLocale("ko".constructLocale()).first())
+        chainInput("ㄴㅏㄴㅏ")
+        assertEquals("나나", text)
+        setCursorPosition(0)
+        input('ㅇ')
+        assertEquals("ㅇ나나", text)
+        assertEquals(1, cursor)
     }
 
     // see issue 1447
@@ -761,7 +768,7 @@ class InputLogicTest {
         }
         assertEquals(oldAfter, textAfterCursor)
         assertEquals(textBeforeCursor + textAfterCursor, getTextFromConnection())
-        if (composer.isComposingWord) // if we're not composing any more cursor is always at the end
+        if (composer.isComposingWord && (oldIsAtEnd || composer.combiningSpec != "hangul"))
             assertEquals(oldIsAtEnd, !composer.isCursorFrontOrMiddleOfComposingWord)
         checkConnectionConsistency()
     }
