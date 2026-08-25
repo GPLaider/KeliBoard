@@ -217,6 +217,13 @@ class HangulCombiner(
             CHEONJIIN_VOWEL_DOT -> processCheonjiinVowel(CHEONJIIN_DOT, event)
             CHEONJIIN_VOWEL_EU -> processCheonjiinVowel('ㅡ', event)
             CHEONJIIN_PUNCTUATION -> processCheonjiinPunctuation(event)
+            Constants.CODE_SPACE -> if (lastCheonjiinCycleCode in CONSONANT_CYCLES
+                    && nowMillis() - lastCheonjiinCycleTime in 0..CHEONJIIN_CYCLE_TIMEOUT_MS) {
+                // Samsung Cheonjiin uses a timely space as a consonant-cycle separator.
+                val text = combiningStateFeedback
+                reset()
+                createEventChainFromSequence(text, Event.createConsumedEvent(event))
+            } else null
             else -> CONSONANT_CYCLES[event.codePoint]?.let { processCheonjiinConsonant(event.codePoint, it, event) }
         }
     }
