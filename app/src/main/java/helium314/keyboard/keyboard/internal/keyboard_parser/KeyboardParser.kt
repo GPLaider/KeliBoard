@@ -102,7 +102,7 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
 
         val numberRow = getNumberRow()
         addNumberRowOrPopupKeys(baseKeys, numberRow)
-        if (element.isAlphabet)
+        if (element.isAlphabet && params.mId.subtype.mainLayoutName != "korean_cheonjiin")
             addSymbolPopupKeys(baseKeys)
         if (element.isAlphaOrSymbol && params.mId.numberRowEnabled) {
             val newLabelFlags = defaultLabelFlags or
@@ -332,7 +332,7 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
 
     // some layouts have numbers hardcoded in the main layout (pcqwerty as keys, and others as popups)
     private fun hasBuiltInNumbers() = when (params.mId.subtype.mainLayoutName) {
-        "pcqwerty" -> true
+        "pcqwerty", "korean_cheonjiin" -> true
         "lao", "thai", "korean_sebeolsik_390", "korean_sebeolsik_final" -> params.mPopupKeyOrder.contains(POPUP_KEYS_LAYOUT)
         else -> false
     }

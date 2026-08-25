@@ -4,6 +4,7 @@ package helium314.keyboard
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodSubtype
 import com.android.inputmethod.keyboard.ProximityInfo
+import helium314.keyboard.event.HangulCombiner
 import helium314.keyboard.keyboard.Key
 import helium314.keyboard.keyboard.Key.KeyParams
 import helium314.keyboard.keyboard.Keyboard
@@ -157,6 +158,38 @@ f""", // no newline at the end
         assertEquals('a'.code, codeFor(KeyboardElement.ALPHABET))
         assertEquals('A'.code, codeFor(KeyboardElement.ALPHABET_MANUAL_SHIFTED))
         assertEquals('A'.code, codeFor(KeyboardElement.ALPHABET_SHIFT_LOCKED))
+    }
+
+    @Test fun `cheonjiin uses Samsung four-column rows and normal symbols`() {
+        val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(
+            Locale.KOREAN, "korean_cheonjiin", false
+        )
+        val (_, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET)
+        assertEquals(listOf(4, 4, 4, 5), keys.map { it.size })
+        assertEquals(
+            listOf(
+                HangulCombiner.CHEONJIIN_VOWEL_I,
+                HangulCombiner.CHEONJIIN_VOWEL_DOT,
+                HangulCombiner.CHEONJIIN_VOWEL_EU,
+                KeyCode.DELETE,
+            ),
+            keys[0].map { it.mCode }
+        )
+        assertEquals(
+            listOf(
+                KeyCode.SYMBOL_ALPHA,
+                KeyCode.LANGUAGE_SWITCH,
+                HangulCombiner.CHEONJIIN_CONSONANT_IEUNG,
+                ' '.code,
+                ','.code,
+            ),
+            keys[3].map { it.mCode }
+        )
+        val digitKeys = keys.take(3).flatMap { it.take(3) } + keys[3][2]
+        assertEquals(('1'..'9').map { it.code } + '0'.code, digitKeys.map { it.mPopupKeys?.first()?.mCode })
+
+        val (_, symbolKeys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.SYMBOLS)
+        assertTrue(symbolKeys.flatten().none { it.mCode in 0xe000..0xe020 })
     }
 
     @Test fun simpleKey() {

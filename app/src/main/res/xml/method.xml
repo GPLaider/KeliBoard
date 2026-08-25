@@ -666,6 +666,15 @@
         android:isAsciiCapable="false"
     />
 	<subtype android:icon="@drawable/ic_ime_switcher"
+        android:label="@string/subtype_generic_cheonjiin"
+        android:subtypeId="0x6b2b1874"
+        android:imeSubtypeLocale="ko"
+        android:languageTag="ko"
+        android:imeSubtypeMode="keyboard"
+        android:imeSubtypeExtraValue="KeyboardLayoutSet=MAIN:korean_cheonjiin,CombiningRules=hangul,NoShiftKey,SupportTouchPositionCorrection,EmojiCapable"
+        android:isAsciiCapable="false"
+    />
+	<subtype android:icon="@drawable/ic_ime_switcher"
         android:label="@string/subtype_generic_phonetic"
         android:subtypeId="0x3f5a9c12"
         android:imeSubtypeLocale="ko"

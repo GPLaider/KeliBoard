@@ -8,17 +8,47 @@ import helium314.keyboard.latin.common.isEmoji
 import java.lang.StringBuilder
 import java.util.ArrayList
 
-class HangulCombiner : Combiner {
+class HangulCombiner(
+    private val nowMillis: () -> Long = { System.nanoTime() / 1_000_000 }
+) : Combiner {
 
     private val composingWord = StringBuilder()
 
     val history: MutableList<HangulSyllable> = mutableListOf()
     private val syllable: HangulSyllable? get() = history.lastOrNull()
 
+    private var lastCheonjiinCycleCode = 0
+    private var lastCheonjiinCycleIndex = 0
+    private var lastCheonjiinCycleTime = 0L
+    private var cheonjiinVowel = 0
+    private var pendingCheonjiinDots = 0
+
     override fun processEvent(previousEvents: ArrayList<Event>?, event: Event): Event {
+        processCheonjiinEvent(event)?.let { return it }
+
+        if (event.keyCode == KeyCode.DELETE && pendingCheonjiinDots > 0) {
+            pendingCheonjiinDots--
+            clearCheonjiinCycle()
+            cheonjiinVowel = 0
+            return Event.createConsumedEvent(event)
+        }
+        if (pendingCheonjiinDots > 0 && isEmoji(event.codePoint)) {
+            val text = combiningStateFeedback
+            reset()
+            return createEventChainFromSequence(text, event)
+        }
+        clearCheonjiinCycle()
+        cheonjiinVowel = 0
+        if (pendingCheonjiinDots > 0 && !event.isFunctionalKeyEvent && !Character.isWhitespace(event.codePoint))
+            finishPendingCheonjiinDots()
         if (event.keyCode == KeyCode.SHIFT || isEmoji(event.codePoint)) return event
+
+        return processHangulEvent(event)
+    }
+
+    private fun processHangulEvent(sourceEvent: Event): Event {
         // previously we only used the combiner if codePoint > 0x1100 or codePoint == -1, but looks here it's not necessary
-        val event = HangulEventDecoder.decodeSoftwareKeyEvent(event)
+        val event = HangulEventDecoder.decodeSoftwareKeyEvent(sourceEvent)
         if (Character.isWhitespace(event.codePoint)) {
             val text = combiningStateFeedback
             reset()
@@ -181,12 +211,142 @@ class HangulCombiner : Combiner {
         return Event.createConsumedEvent(event)
     }
 
+    private fun processCheonjiinEvent(event: Event): Event? {
+        return when (event.codePoint) {
+            CHEONJIIN_VOWEL_I -> processCheonjiinVowel('ㅣ', event)
+            CHEONJIIN_VOWEL_DOT -> processCheonjiinVowel(CHEONJIIN_DOT, event)
+            CHEONJIIN_VOWEL_EU -> processCheonjiinVowel('ㅡ', event)
+            CHEONJIIN_PUNCTUATION -> processCheonjiinPunctuation(event)
+            else -> CONSONANT_CYCLES[event.codePoint]?.let { processCheonjiinConsonant(event.codePoint, it, event) }
+        }
+    }
+
+    private fun processCheonjiinConsonant(code: Int, cycle: IntArray, event: Event): Event {
+        if (pendingCheonjiinDots > 0)
+            finishPendingCheonjiinDots()
+        cheonjiinVowel = 0
+
+        val now = nowMillis()
+        val continuesCycle = code == lastCheonjiinCycleCode
+                && now - lastCheonjiinCycleTime in 0..CHEONJIIN_CYCLE_TIMEOUT_MS
+        lastCheonjiinCycleIndex = if (continuesCycle) (lastCheonjiinCycleIndex + 1) % cycle.size else 0
+        if (continuesCycle)
+            undoLastHangulInput()
+        lastCheonjiinCycleCode = code
+        lastCheonjiinCycleTime = now
+        return processHangulCodePoint(cycle[lastCheonjiinCycleIndex], event)
+    }
+
+    private fun processCheonjiinVowel(stroke: Char, event: Event): Event {
+        clearCheonjiinCycle()
+
+        if (pendingCheonjiinDots > 0) {
+            if (stroke == CHEONJIIN_DOT) {
+                pendingCheonjiinDots = if (pendingCheonjiinDots == 2) 1 else pendingCheonjiinDots + 1
+                return Event.createConsumedEvent(event)
+            }
+            val vowel = when (pendingCheonjiinDots to stroke) {
+                1 to 'ㅣ' -> 'ㅓ'
+                1 to 'ㅡ' -> 'ㅗ'
+                2 to 'ㅣ' -> 'ㅕ'
+                2 to 'ㅡ' -> 'ㅛ'
+                else -> null
+            }
+            pendingCheonjiinDots = 0
+            if (vowel != null) {
+                cheonjiinVowel = vowel.code
+                return processHangulCodePoint(vowel.code, event)
+            }
+        }
+
+        if (cheonjiinVowel == 0 && syllable?.final == null) {
+            val exposedVowel = syllable?.medial?.toVowel()?.codePoint ?: 0
+            if (VOWEL_TRANSITIONS.keys.any { it.first == exposedVowel })
+                cheonjiinVowel = exposedVowel
+        }
+        VOWEL_TRANSITIONS[cheonjiinVowel to stroke.code]?.let { vowel ->
+            undoLastHangulInput()
+            cheonjiinVowel = vowel
+            return processHangulCodePoint(vowel, event)
+        }
+
+        cheonjiinVowel = 0
+        return when (stroke) {
+            CHEONJIIN_DOT -> {
+                pendingCheonjiinDots = 1
+                Event.createConsumedEvent(event)
+            }
+            'ㅣ', 'ㅡ' -> {
+                cheonjiinVowel = stroke.code
+                processHangulCodePoint(stroke.code, event)
+            }
+            else -> Event.createConsumedEvent(event)
+        }
+    }
+
+    private fun processCheonjiinPunctuation(event: Event): Event {
+        if (pendingCheonjiinDots > 0)
+            finishPendingCheonjiinDots()
+        cheonjiinVowel = 0
+
+        val now = nowMillis()
+        val continuesCycle = lastCheonjiinCycleCode == CHEONJIIN_PUNCTUATION
+                && now - lastCheonjiinCycleTime in 0..CHEONJIIN_CYCLE_TIMEOUT_MS
+        lastCheonjiinCycleIndex = if (continuesCycle) (lastCheonjiinCycleIndex + 1) % PUNCTUATION_CYCLE.size else 0
+        if (continuesCycle && composingWord.isNotEmpty()) {
+            composingWord.deleteCharAt(composingWord.lastIndex)
+        } else {
+            finishCurrentSyllable()
+        }
+        composingWord.appendCodePoint(PUNCTUATION_CYCLE[lastCheonjiinCycleIndex])
+        lastCheonjiinCycleCode = CHEONJIIN_PUNCTUATION
+        lastCheonjiinCycleTime = now
+        return Event.createConsumedEvent(event)
+    }
+
+    private fun processHangulCodePoint(codePoint: Int, sourceEvent: Event): Event =
+        processHangulEvent(Event.createSoftwareKeypressEvent(
+            codePoint, Event.NOT_A_KEY_CODE, sourceEvent.metaState, sourceEvent.x, sourceEvent.y, sourceEvent.isKeyRepeat
+        ))
+
+    private fun undoLastHangulInput() {
+        if (history.isNotEmpty()) {
+            history.removeAt(history.lastIndex)
+        } else if (composingWord.isNotEmpty()) {
+            composingWord.deleteCharAt(composingWord.lastIndex)
+        }
+    }
+
+    private fun finishCurrentSyllable() {
+        composingWord.append(syllable?.string ?: "")
+        history.clear()
+    }
+
+    private fun finishPendingCheonjiinDots() {
+        finishCurrentSyllable()
+        repeat(pendingCheonjiinDots) { composingWord.append(CHEONJIIN_DOT) }
+        pendingCheonjiinDots = 0
+    }
+
+    private fun clearCheonjiinCycle() {
+        lastCheonjiinCycleCode = 0
+        lastCheonjiinCycleIndex = 0
+        lastCheonjiinCycleTime = 0L
+    }
+
     override val combiningStateFeedback: CharSequence
-        get() = composingWord.toString() + (syllable?.string ?: "")
+        get() = buildString {
+            append(composingWord)
+            append(syllable?.string ?: "")
+            repeat(pendingCheonjiinDots) { append(CHEONJIIN_DOT) }
+        }
 
     override fun reset() {
         composingWord.setLength(0)
         history.clear()
+        clearCheonjiinCycle()
+        cheonjiinVowel = 0
+        pendingCheonjiinDots = 0
     }
 
     sealed class HangulJamo {
@@ -280,6 +440,51 @@ class HangulCombiner : Combiner {
     }
 
     companion object {
+        const val CHEONJIIN_VOWEL_I = 0xe000
+        const val CHEONJIIN_VOWEL_DOT = 0xe001
+        const val CHEONJIIN_VOWEL_EU = 0xe002
+        const val CHEONJIIN_CONSONANT_GIYEOK = 0xe010
+        const val CHEONJIIN_CONSONANT_NIEUN = 0xe011
+        const val CHEONJIIN_CONSONANT_DIGEUT = 0xe012
+        const val CHEONJIIN_CONSONANT_BIEUP = 0xe013
+        const val CHEONJIIN_CONSONANT_SIOT = 0xe014
+        const val CHEONJIIN_CONSONANT_JIEUT = 0xe015
+        const val CHEONJIIN_CONSONANT_IEUNG = 0xe016
+        const val CHEONJIIN_PUNCTUATION = 0xe020
+
+        private const val CHEONJIIN_CYCLE_TIMEOUT_MS = 1500L
+        private const val CHEONJIIN_DOT = 'ㆍ'
+
+        private val CONSONANT_CYCLES = mapOf(
+            CHEONJIIN_CONSONANT_GIYEOK to intArrayOf('ㄱ'.code, 'ㅋ'.code, 'ㄲ'.code),
+            CHEONJIIN_CONSONANT_NIEUN to intArrayOf('ㄴ'.code, 'ㄹ'.code),
+            CHEONJIIN_CONSONANT_DIGEUT to intArrayOf('ㄷ'.code, 'ㅌ'.code, 'ㄸ'.code),
+            CHEONJIIN_CONSONANT_BIEUP to intArrayOf('ㅂ'.code, 'ㅍ'.code, 'ㅃ'.code),
+            CHEONJIIN_CONSONANT_SIOT to intArrayOf('ㅅ'.code, 'ㅎ'.code, 'ㅆ'.code),
+            CHEONJIIN_CONSONANT_JIEUT to intArrayOf('ㅈ'.code, 'ㅊ'.code, 'ㅉ'.code),
+            CHEONJIIN_CONSONANT_IEUNG to intArrayOf('ㅇ'.code, 'ㅁ'.code),
+        )
+        private val PUNCTUATION_CYCLE = intArrayOf('.'.code, ','.code, '?'.code, '!'.code)
+        private val VOWEL_TRANSITIONS = mapOf(
+            'ㅣ'.code to CHEONJIIN_DOT.code to 'ㅏ'.code,
+            'ㅏ'.code to CHEONJIIN_DOT.code to 'ㅑ'.code,
+            'ㅏ'.code to 'ㅣ'.code to 'ㅐ'.code,
+            'ㅑ'.code to 'ㅣ'.code to 'ㅒ'.code,
+            'ㅓ'.code to 'ㅣ'.code to 'ㅔ'.code,
+            'ㅓ'.code to CHEONJIIN_DOT.code to 'ㅕ'.code,
+            'ㅕ'.code to 'ㅣ'.code to 'ㅖ'.code,
+            'ㅗ'.code to 'ㅣ'.code to 'ㅚ'.code,
+            'ㅗ'.code to CHEONJIIN_DOT.code to 'ㅛ'.code,
+            'ㅚ'.code to CHEONJIIN_DOT.code to 'ㅘ'.code,
+            'ㅘ'.code to 'ㅣ'.code to 'ㅙ'.code,
+            'ㅡ'.code to 'ㅣ'.code to 'ㅢ'.code,
+            'ㅡ'.code to CHEONJIIN_DOT.code to 'ㅜ'.code,
+            'ㅜ'.code to 'ㅣ'.code to 'ㅟ'.code,
+            'ㅜ'.code to CHEONJIIN_DOT.code to 'ㅠ'.code,
+            'ㅠ'.code to 'ㅣ'.code to 'ㅝ'.code,
+            'ㅝ'.code to 'ㅣ'.code to 'ㅞ'.code,
+        )
+
         val COMBINATION_TABLE_DUBEOLSIK = mapOf<Pair<Int, Int>, Int>(
                 0x1169 to 0x1161 to 0x116a,
                 0x1169 to 0x1162 to 0x116b,

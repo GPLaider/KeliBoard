@@ -1,0 +1,17 @@
+[
+  [
+    { "label": "ㅣ", "code": 57344, "width": 0.25, "popup": { "main": { "label": "1", "type": "numeric" } } },
+    { "label": "ㆍ", "code": 57345, "width": 0.25, "popup": { "main": { "label": "2", "type": "numeric" } } },
+    { "label": "ㅡ", "code": 57346, "width": 0.25, "popup": { "main": { "label": "3", "type": "numeric" } } }
+  ],
+  [
+    { "label": "ㄱㅋ", "code": 57360, "width": 0.25, "popup": { "main": { "label": "4", "type": "numeric" } } },
+    { "label": "ㄴㄹ", "code": 57361, "width": 0.25, "popup": { "main": { "label": "5", "type": "numeric" } } },
+    { "label": "ㄷㅌ", "code": 57362, "width": 0.25, "popup": { "main": { "label": "6", "type": "numeric" } } }
+  ],
+  [
+    { "label": "ㅂㅍ", "code": 57363, "width": 0.25, "popup": { "main": { "label": "7", "type": "numeric" } } },
+    { "label": "ㅅㅎ", "code": 57364, "width": 0.25, "popup": { "main": { "label": "8", "type": "numeric" } } },
+    { "label": "ㅈㅊ", "code": 57365, "width": 0.25, "popup": { "main": { "label": "9", "type": "numeric" } } }
+  ]
+]

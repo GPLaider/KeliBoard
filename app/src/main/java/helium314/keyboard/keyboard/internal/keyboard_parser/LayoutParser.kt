@@ -38,7 +38,10 @@ object LayoutParser {
         if (layoutType == LayoutType.FUNCTIONAL && !params.mId.element.takesFunctionalKeys)
             return mutableListOf(mutableListOf()) // no functional keys
         val layoutName = if (layoutType == LayoutType.MAIN) params.mId.subtype.mainLayoutName
-            else params.mId.subtype.layouts[layoutType] ?: Settings.readDefaultLayoutName(layoutType, context.prefs())
+            else params.mId.subtype.layouts[layoutType]
+                ?: if (layoutType == LayoutType.FUNCTIONAL && params.mId.element.isAlphabet
+                    && params.mId.subtype.mainLayoutName == "korean_cheonjiin") "functional_keys_cheonjiin"
+                else Settings.readDefaultLayoutName(layoutType, context.prefs())
         return layoutCache.getOrPut(layoutType.name + layoutName) {
             createCacheLambda(layoutType, layoutName, context)
         }(params).apply {
