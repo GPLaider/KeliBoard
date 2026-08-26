@@ -62,7 +62,6 @@ public class Key implements Comparable<Key> {
     public static final int LABEL_FLAGS_FOLLOW_KEY_LARGE_LETTER_RATIO = 0x40;
     public static final int LABEL_FLAGS_FOLLOW_KEY_LETTER_RATIO = 0x80;
     public static final int LABEL_FLAGS_FOLLOW_KEY_LABEL_RATIO = 0xC0;
-    public static final int LABEL_FLAGS_FOLLOW_KEY_HINT_LETTER_RATIO = 0x100;
     public static final int LABEL_FLAGS_FOLLOW_KEY_HINT_LABEL_RATIO = 0x140;
     // End of key text ratio mask enum values
     public static final int LABEL_FLAGS_HAS_SHIFTED_LETTER_HINT = 0x400;
@@ -569,7 +568,6 @@ public class Key implements Comparable<Key> {
             case LABEL_FLAGS_FOLLOW_KEY_LETTER_RATIO -> params.mLetterSize;
             case LABEL_FLAGS_FOLLOW_KEY_LARGE_LETTER_RATIO -> params.mLargeLetterSize;
             case LABEL_FLAGS_FOLLOW_KEY_LABEL_RATIO -> params.mLabelSize;
-            case LABEL_FLAGS_FOLLOW_KEY_HINT_LETTER_RATIO -> params.mHintLetterSize;
             case LABEL_FLAGS_FOLLOW_KEY_HINT_LABEL_RATIO -> params.mHintLabelSize;
             // No follow key ratio flag specified.
             default -> StringUtils.codePointCount(mLabel) == 1 ? params.mLetterSize : params.mLabelSize;

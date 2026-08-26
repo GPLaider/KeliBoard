@@ -176,7 +176,11 @@ f""", // no newline at the end
             keys[0].map { it.mCode }
         )
         assertTrue(keys[0].take(3).all {
-            it.mLabelFlags and 0x1c0 == Key.LABEL_FLAGS_FOLLOW_KEY_HINT_LETTER_RATIO
+            it.mLabelFlags and 0x1c0 == Key.LABEL_FLAGS_FOLLOW_KEY_LABEL_RATIO
+        })
+        val consonantKeys = keys.slice(1..2).flatMap { it.take(3) } + keys[3][2]
+        assertTrue(consonantKeys.all {
+            it.mLabelFlags and 0x1c0 == Key.LABEL_FLAGS_FOLLOW_KEY_LETTER_RATIO
         })
         assertEquals(
             listOf(

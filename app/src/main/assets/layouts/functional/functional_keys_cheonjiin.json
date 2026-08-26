@@ -17,7 +17,7 @@
   [
     { "label": "!#1", "code": -10001, "type": "modifier", "width": 0.125 },
     { "label": "한/영", "code": -227, "type": "system_gui", "width": 0.125 },
-    { "label": "ㅇㅁ", "code": 57366, "type": "character", "width": 0.25,
+    { "label": "ㅇㅁ", "code": 57366, "type": "character", "width": 0.25, "labelFlags": 128,
       "popup": { "main": { "label": "0", "type": "numeric" } } },
     { "label": "space", "width": 0.25 },
     { "label": "comma", "width": 0.25 }
