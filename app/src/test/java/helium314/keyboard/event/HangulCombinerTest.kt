@@ -97,5 +97,40 @@ class HangulCombinerTest {
         assertEquals("ㆍㆍ", combiner.combiningStateFeedback)
         delete()
         assertEquals("ㆍ", combiner.combiningStateFeedback)
+
+        mapOf(
+            "않아" to intArrayOf(
+                HangulCombiner.CHEONJIIN_CONSONANT_IEUNG,
+                HangulCombiner.CHEONJIIN_VOWEL_I, HangulCombiner.CHEONJIIN_VOWEL_DOT,
+                HangulCombiner.CHEONJIIN_CONSONANT_NIEUN,
+                HangulCombiner.CHEONJIIN_CONSONANT_SIOT, HangulCombiner.CHEONJIIN_CONSONANT_SIOT,
+                HangulCombiner.CHEONJIIN_CONSONANT_IEUNG,
+                HangulCombiner.CHEONJIIN_VOWEL_I, HangulCombiner.CHEONJIIN_VOWEL_DOT,
+            ),
+            "잖아" to intArrayOf(
+                HangulCombiner.CHEONJIIN_CONSONANT_JIEUT,
+                HangulCombiner.CHEONJIIN_VOWEL_I, HangulCombiner.CHEONJIIN_VOWEL_DOT,
+                HangulCombiner.CHEONJIIN_CONSONANT_NIEUN,
+                HangulCombiner.CHEONJIIN_CONSONANT_SIOT, HangulCombiner.CHEONJIIN_CONSONANT_SIOT,
+                HangulCombiner.CHEONJIIN_CONSONANT_IEUNG,
+                HangulCombiner.CHEONJIIN_VOWEL_I, HangulCombiner.CHEONJIIN_VOWEL_DOT,
+            ),
+            "삶" to intArrayOf(
+                HangulCombiner.CHEONJIIN_CONSONANT_SIOT,
+                HangulCombiner.CHEONJIIN_VOWEL_I, HangulCombiner.CHEONJIIN_VOWEL_DOT,
+                HangulCombiner.CHEONJIIN_CONSONANT_NIEUN, HangulCombiner.CHEONJIIN_CONSONANT_NIEUN,
+                HangulCombiner.CHEONJIIN_CONSONANT_IEUNG, HangulCombiner.CHEONJIIN_CONSONANT_IEUNG,
+            ),
+            "핥" to intArrayOf(
+                HangulCombiner.CHEONJIIN_CONSONANT_SIOT, HangulCombiner.CHEONJIIN_CONSONANT_SIOT,
+                HangulCombiner.CHEONJIIN_VOWEL_I, HangulCombiner.CHEONJIIN_VOWEL_DOT,
+                HangulCombiner.CHEONJIIN_CONSONANT_NIEUN, HangulCombiner.CHEONJIIN_CONSONANT_NIEUN,
+                HangulCombiner.CHEONJIIN_CONSONANT_DIGEUT, HangulCombiner.CHEONJIIN_CONSONANT_DIGEUT,
+            ),
+        ).forEach { (expected, sequence) ->
+            combiner.reset()
+            sequence.forEach { tap(it) }
+            assertEquals(expected, combiner.combiningStateFeedback, expected)
+        }
     }
 }

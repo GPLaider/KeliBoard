@@ -20,6 +20,8 @@ class HangulCombiner(
     private var lastCheonjiinCycleCode = 0
     private var lastCheonjiinCycleIndex = 0
     private var lastCheonjiinCycleTime = 0L
+    private var cheonjiinCycleComposingLength = 0
+    private var cheonjiinCycleHistory = emptyList<HangulSyllable>()
     private var cheonjiinVowel = 0
     private var pendingCheonjiinDots = 0
 
@@ -237,8 +239,14 @@ class HangulCombiner(
         val continuesCycle = code == lastCheonjiinCycleCode
                 && now - lastCheonjiinCycleTime in 0..CHEONJIIN_CYCLE_TIMEOUT_MS
         lastCheonjiinCycleIndex = if (continuesCycle) (lastCheonjiinCycleIndex + 1) % cycle.size else 0
-        if (continuesCycle)
-            undoLastHangulInput()
+        if (continuesCycle) {
+            composingWord.setLength(cheonjiinCycleComposingLength)
+            history.clear()
+            history.addAll(cheonjiinCycleHistory)
+        } else {
+            cheonjiinCycleComposingLength = composingWord.length
+            cheonjiinCycleHistory = history.toList()
+        }
         lastCheonjiinCycleCode = code
         lastCheonjiinCycleTime = now
         return processHangulCodePoint(cycle[lastCheonjiinCycleIndex], event)
@@ -339,6 +347,8 @@ class HangulCombiner(
         lastCheonjiinCycleCode = 0
         lastCheonjiinCycleIndex = 0
         lastCheonjiinCycleTime = 0L
+        cheonjiinCycleComposingLength = 0
+        cheonjiinCycleHistory = emptyList()
     }
 
     override val combiningStateFeedback: CharSequence
