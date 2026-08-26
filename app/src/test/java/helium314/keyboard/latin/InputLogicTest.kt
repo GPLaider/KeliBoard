@@ -245,6 +245,22 @@ class InputLogicTest {
         assertEquals("hello. a", textBeforeCursor)
     }
 
+    @Test fun autospaceWithSuggestionsDisabled() {
+        latinIME.prefs().edit {
+            putBoolean(Settings.PREF_AUTOSPACE_AFTER_PUNCTUATION, true)
+            putBoolean(Settings.PREF_SHOW_SUGGESTIONS, false)
+        }
+        setText("hello")
+        input('.')
+        input('a')
+        assertEquals("hello. a", textBeforeCursor)
+
+        setText("3")
+        input('.')
+        input('1')
+        assertEquals("3.1", textBeforeCursor)
+    }
+
     @Test fun autospaceButWithTextAfter() {
         setText("hello there")
         setCursorPosition(5) // after hello

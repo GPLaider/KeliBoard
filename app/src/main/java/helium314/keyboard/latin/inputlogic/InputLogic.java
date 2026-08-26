@@ -1158,6 +1158,8 @@ public final class InputLogic {
         final int codePoint = event.getCodePoint();
         final SettingsValues settingsValues = inputTransaction.getSettingsValues();
         final boolean wasComposingWord = mWordComposer.isComposingWord();
+        final boolean wasTypingWord = wasComposingWord
+                || settingsValues.isWordCodePoint(mConnection.getCodePointBeforeCursor());
         // We avoid sending spaces in languages without spaces if we were composing.
         final boolean shouldAvoidSendingCode = Constants.CODE_SPACE == codePoint
                 && !settingsValues.mSpacingAndPunctuations.mCurrentLanguageHasSpaces
@@ -1244,12 +1246,12 @@ public final class InputLogic {
             } else {
                 // mSpaceState is still SpaceState.NONE, but some characters should typically
                 // be followed by space. Set phantom space state for such characters if the user
-                // enabled the setting and was not composing a word. The latter avoids setting
-                // phantom space state when typing decimal numbers, with the drawback of not
-                // setting phantom space state after ending a sentence with a non-word.
+                // enabled the setting and the preceding text was a word. Checking the text as well
+                // as composing state keeps this working when suggestions are disabled, while word
+                // code points exclude digits so decimal numbers do not get an automatic space.
                 // A double quote behaves like it's usually followed by space if we're inside
                 // a double quote.
-                if (wasComposingWord
+                if (wasTypingWord
                         && settingsValues.mAutospaceAfterPunctuation
                         && (settingsValues.isUsuallyFollowedBySpace(codePoint) || isInsideDoubleQuoteOrAfterDigit)) {
                     mSpaceState = SpaceState.PHANTOM;
