@@ -11,6 +11,7 @@ import helium314.keyboard.keyboard.Keyboard
 import helium314.keyboard.keyboard.KeyboardElement
 import helium314.keyboard.keyboard.KeyboardId
 import helium314.keyboard.keyboard.KeyboardLayoutSet
+import helium314.keyboard.keyboard.internal.KeyDrawParams
 import helium314.keyboard.keyboard.internal.KeySpecParser.KeySpecParserError
 import helium314.keyboard.keyboard.internal.KeyboardBuilder
 import helium314.keyboard.keyboard.internal.KeyboardParams
@@ -164,7 +165,7 @@ f""", // no newline at the end
         val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(
             Locale.KOREAN, "korean_cheonjiin", false
         )
-        val (_, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET)
+        val (keyboard, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET)
         assertEquals(listOf(4, 4, 4, 5), keys.map { it.size })
         assertEquals(
             listOf(
@@ -176,8 +177,12 @@ f""", // no newline at the end
             keys[0].map { it.mCode }
         )
         assertTrue(keys[0].take(3).all {
-            it.mLabelFlags and 0x1c0 == Key.LABEL_FLAGS_FOLLOW_KEY_LABEL_RATIO
+            it.mLabelFlags and 0x1c0 == Key.LABEL_FLAGS_FOLLOW_KEY_MEDIUM_LABEL_RATIO
         })
+        val drawParams = KeyDrawParams().apply { mLabelSize = 100 }
+        val vowelKeys = keyboard.sortedKeys.filter { it.label in setOf("ㅣ", "ㆍ", "ㅡ") }
+        assertEquals(3, vowelKeys.size)
+        assertTrue(vowelKeys.all { it.selectTextSize(drawParams) == 120 })
         val consonantKeys = keys.slice(1..2).flatMap { it.take(3) } + keys[3][2]
         assertTrue(consonantKeys.all {
             it.mLabelFlags and 0x1c0 == Key.LABEL_FLAGS_FOLLOW_KEY_LETTER_RATIO
