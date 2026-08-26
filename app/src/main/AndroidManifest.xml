@@ -110,7 +110,7 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
 
         <!-- for pasting files from internal clipboard -->
         <provider android:name="helium314.keyboard.latin.database.ClipboardContentProvider"
-            android:authorities="@string/clipboard_provider_authority"
+            android:authorities="${applicationId}.clipprovider"
             android:enabled="true"
             android:grantUriPermissions="true"
             android:exported="false">
@@ -121,7 +121,7 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
 
         <!-- necessary for sending mail attachments, remove when data gathering phase is done (end of 2026 latest) -->
         <provider android:name="helium314.keyboard.settings.screens.gesturedata.GestureFileProvider"
-            android:authorities="@string/gesture_data_provider_authority"
+            android:authorities="${applicationId}.provider"
             android:enabled="true"
             android:grantUriPermissions="true"
             android:exported="false">

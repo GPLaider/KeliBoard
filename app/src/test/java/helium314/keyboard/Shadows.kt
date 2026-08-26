@@ -39,11 +39,12 @@ object ShadowLocaleManagerCompat {
 @Implements(InputMethodManager::class)
 class ShadowInputMethodManager2 : ShadowInputMethodManager() {
     @Implementation
-    override fun getInputMethodList() = listOf(
-        if (BuildConfig.BUILD_TYPE == "debug" || BuildConfig.BUILD_TYPE == "debugNoMinify")
-            InputMethodInfo("helium314.keyboard.debug", "LatinIME", "KeliBoard debug", null)
-        else InputMethodInfo("helium314.keyboard", "LatinIME", "KeliBoard", null),
-    )
+    override fun getInputMethodList() = listOf(InputMethodInfo(
+        BuildConfig.APPLICATION_ID,
+        "LatinIME",
+        if (BuildConfig.BUILD_TYPE == "debug" || BuildConfig.BUILD_TYPE == "debugNoMinify") "KeliBoard debug" else "KeliBoard",
+        null,
+    ))
     @Implementation
     fun getShortcutInputMethodsAndSubtypes() = emptyMap<InputMethodInfo, List<InputMethodSubtype>>()
     @Implementation

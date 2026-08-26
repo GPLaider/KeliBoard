@@ -51,9 +51,9 @@ See [layouts.md](layouts.md) for custom layout documentation. The upstream [Heli
 
 Download the current build from [GitHub Releases](https://github.com/GPLaider/KeliBoard/releases/latest).
 
-KeliBoard previews currently retain HeliBoard's `helium314.keyboard` application ID for update compatibility with earlier KeliBoard previews. Because Android requires matching signatures, they cannot update an official HeliBoard build signed by another distributor. Back up HeliBoard settings before switching.
+KeliBoard 4.0-ko-preview5 and later use the independent `io.github.gplaider.keliboard` application ID. They can coexist with official HeliBoard and earlier KeliBoard previews.
 
-An independent application ID is required before a separate F-Droid listing. That migration will be completed before the first stable KeliBoard release.
+Android does not migrate app data between application IDs. Before switching, back up settings in the earlier app and restore that backup in KeliBoard.
 
 ## Reporting issues
 
@@ -90,4 +90,3 @@ KeliBoard is licensed under the [GNU General Public License v3.0](LICENSE). The 
 - [OpenBoard](https://github.com/openboard-team/openboard)
 - [AOSP LatinIME](https://android.googlesource.com/platform/packages/inputmethods/LatinIME/)
 - LineageOS, Simple Keyboard, Indic Keyboard, and FlorisBoard contributors
-- Original HeliBoard icon artwork by Fabian OvrWrt with contributions from The Eclectic Dyslexic

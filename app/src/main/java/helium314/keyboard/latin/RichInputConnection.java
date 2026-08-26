@@ -999,6 +999,10 @@ public final class RichInputConnection implements PrivateCommandPerformer {
         // to the new value.
         if (mExpectedSelStart == oldSelStart && mExpectedSelEnd == oldSelEnd
                 && (oldSelStart != newSelStart || oldSelEnd != newSelEnd)) return false;
+        // Normal typing leaves the cursor at the end of the composing span. A cursor inside it
+        // is an explicit edit even when the editor reports a stale old selection.
+        if (newSelStart == newSelEnd && composingSpanStart >= 0
+                && newSelStart >= composingSpanStart && newSelStart < composingSpanEnd) return false;
         // If neither of the above two cases hold, then the system may be having trouble keeping up
         // with updates. If 1) the selection is a cursor, 2) newSelStart is between oldSelStart
         // and mExpectedSelStart, and 3) newSelEnd is between oldSelEnd and mExpectedSelEnd, then

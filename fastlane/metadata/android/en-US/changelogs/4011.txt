@@ -1,0 +1,10 @@
+KeliBoard now uses its own app identity and can coexist with HeliBoard.
+
+- New rounded-keycap KeliBoard icon
+- Complete Korean settings translation
+- First-class Korean and Cheonjiin input fixes
+- Fixed Hangul input changing the word ending after moving the cursor into a word
+- Lock-screen QWERTY and punctuation fixes
+- Stability and long-press improvements from the KeliBoard preview series
+
+Android cannot migrate data between app identities. Back up settings in an earlier preview and restore them in this version.

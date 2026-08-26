@@ -190,6 +190,21 @@ class InputLogicTest {
         assertEquals(1, cursor)
     }
 
+    @Test fun insertHangulAfterStaleSelectionUpdate() {
+        latinIME.switchToSubtype(SubtypeSettings.getResourceSubtypesForLocale("ko".constructLocale()).first())
+        chainInput("ㄴㅏㄴㅏ")
+        assertEquals("나나", text)
+
+        selectionStart = 1
+        selectionEnd = 1
+        latinIME.onUpdateSelection(0, 0, 1, 1, composingStart, composingEnd)
+        handleMessages()
+
+        input('ㅇ')
+        assertEquals("나ㅇ나", text)
+        assertEquals(2, cursor)
+    }
+
     // see issue 1447
     @Test fun separatorAfterHangul() {
         latinIME.switchToSubtype(SubtypeSettings.getResourceSubtypesForLocale("ko".constructLocale()).first())
