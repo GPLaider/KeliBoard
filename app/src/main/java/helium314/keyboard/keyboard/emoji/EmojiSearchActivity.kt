@@ -128,6 +128,7 @@ class EmojiSearchActivity : ComponentActivity() {
     private var pressedKey: Key? = null
     private var imeVisible = false
     private var imeClosed = false
+    private var searchText = ""
 
     private val closer = Runnable {
         if (!imeVisible) {
@@ -385,7 +386,6 @@ class EmojiSearchActivity : ComponentActivity() {
         const val EMOJI_KEY: String = "EMOJI"
         private const val PRIVATE_IME_OPTIONS_PREFIX: String = "helium314.keyboard.keyboard.emoji.search"
         private var dictionaryFacilitator: SingleDictionaryFacilitator? = null
-        private var searchText: String = ""
 
         fun decodePrivateImeOptions(editorInfo: EditorInfo?): PrivateImeOptions = PrivateImeOptions(
             editorInfo?.privateImeOptions?.takeIf { it.startsWith(PRIVATE_IME_OPTIONS_PREFIX) }
