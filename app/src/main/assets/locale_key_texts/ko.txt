@@ -1,3 +1,10 @@
+[popup_keys]
+ㅂ ㅃ
+ㅈ ㅉ
+ㄷ ㄸ
+ㄱ ㄲ
+ㅅ ㅆ
+
 [labels]
 alphabet: ㄱㄴㄷ
 

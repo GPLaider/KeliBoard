@@ -199,6 +199,17 @@ f""", // no newline at the end
         assertTrue(symbolKeys.flatten().none { it.mCode in 0xe000..0xe020 })
     }
 
+    @Test fun `korean dubeolsik long press prioritizes double consonants`() {
+        val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(
+            Locale.KOREAN, "korean", false
+        )
+        val (_, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET)
+        assertEquals(
+            listOf('ㅃ', 'ㅉ', 'ㄸ', 'ㄲ', 'ㅆ').map { it.code },
+            keys[0].take(5).map { it.mPopupKeys?.first()?.mCode }
+        )
+    }
+
     @Test fun simpleKey() {
         assertIsExpected("""[[{ "$": "auto_text_key" "label": "a" }]]""", Expected('a'.code, "a"))
         assertIsExpected("""[[{ "$": "text_key" "label": "a" }]]""", Expected('a'.code, "a"))
