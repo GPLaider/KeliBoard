@@ -443,6 +443,24 @@ f""", // no newline at the end
         assertEquals(null, keyWithoutRedundantPopups.hintLabel)
     }
 
+    @Test fun placeholderAsOnlyPopup() { // https://github.com/HeliBorg/HeliBoard/issues/1324
+        val keyParams = LayoutParser.parseJsonString("""[[{ "label": "ক", "popup": { "relevant": [
+          { "type": "placeholder" }
+        ] } }]]""").flatMap { row -> row.mapNotNull { it.compute(params)?.toKeyParams(params) } }.single()
+        assertEquals(null, keyParams.mPopupKeys)
+        keyParams.mAbsoluteWidth = 1f
+        keyParams.mAbsoluteHeight = 1f
+        assertEquals(false, keyParams.createKey().isLongPressEnabled)
+    }
+
+    @Test fun placeholderNextToOtherPopup() {
+        val keyParams = LayoutParser.parseJsonString("""[[{ "label": "ক", "popup": { "relevant": [
+          { "type": "placeholder" }, { "label": "k" }
+        ] } }]]""").flatMap { row -> row.mapNotNull { it.compute(params)?.toKeyParams(params) } }.single()
+        assertEquals(1, keyParams.mPopupKeys?.size)
+        assertEquals("k", keyParams.mPopupKeys?.first()?.mLabel)
+    }
+
     @Test fun popupWithCodeAndLabel() {
         val key = LayoutParser.parseJsonString("""[[{ "label": "w", "popup": {
           "main": { "code":   55, "label": "!" }
