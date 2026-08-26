@@ -1,30 +1,20 @@
-HeliBoard is a privacy-conscious open-source keyboard, based on AOSP / OpenBoard.
-Does not use internet permission, and thus is 100% offline.
+KeliBoard is a modern, actively maintained HeliBoard fork focused on stability, usability, and first-class language support.
 
-Features:
+It is privacy-conscious, fully open source, and works offline without the internet permission.
+
+Highlights:
 <ul>
-  <li>Add dictionaries for suggestions and spell check</li>
-  <ul>
-    <li>build your own, or get them  <a href="https://codeberg.org/Helium314/aosp-dictionaries#dictionaries">here</a>, or in the <a href="https://codeberg.org/Helium314/aosp-dictionaries#experimental-dictionaries">experimental</a> section (quality may vary)</li>
-    <li>additional dictionaries for emojis or scientific symbols can be used to provide suggestions (similar to "emoji search")</li>
-    <li>note that for Korean layouts, suggestions only work using <a href="https://github.com/openboard-team/openboard/commit/83fca9533c03b9fecc009fc632577226bbd6301f">this dictionary</a>, the tools in the dictionary repository are not able to create working dictionaries</li>
-  </ul>
-  <li>Customize keyboard themes (style, colors and background image)</li>
-  <ul>
-    <li>can follow the system's day/night setting on Android 10+ (and on some versions of Android 9)</li>
-    <li>can follow dynamic colors for Android 12+</li>
-  </ul>
-  <li>Customize keyboard <a href="https://github.com/HeliBorg/HeliBoard/blob/main/layouts.md">layouts</a> (only available when disabling <i>use system languages</i>)</li>
-  <li>Customize special layouts, like symbols, number,  or functional key layout</li>
+  <li>Fixes for long-standing keyboard, composition, emoji, and spacing issues</li>
+  <li>First-class Korean support, including Cheonjiin and Korean QWERTY layouts</li>
+  <li>Customizable layouts, themes, colors, icons, fonts, and background images</li>
+  <li>Dictionaries for suggestions and spell checking</li>
   <li>Multilingual typing</li>
-  <li>Glide typing (<i>only with closed source library</i> ☹️)</li>
-  <ul>
-    <li>library not included in the app, as there is no compatible open source library available</li>
-    <li>can be extracted from GApps packages ("<i>swypelibs</i>"), or downloaded <a href="https://github.com/erkserkserks/openboard/tree/46fdf2b550035ca69299ce312fa158e7ade36967/app/src/main/jniLibs">here</a> (click on the file and then "raw" or the tiny download button)</li>
-  </ul>
   <li>Clipboard history</li>
-  <li>One-handed mode</li>
-  <li>Split keyboard (only available if the screen is large enough)</li>
+  <li>One-handed and split keyboard modes</li>
   <li>Number pad</li>
-  <li>Backup and restore your settings and learned word / history data</li>
+  <li>Backup and restore for settings and learned data</li>
 </ul>
+
+Korean is a flagship feature, not the limit of the project. KeliBoard remains a general-purpose keyboard for HeliBoard users in every language.
+
+KeliBoard is based on HeliBoard, which is based on AOSP and OpenBoard. Upstream attribution and licenses are preserved.
