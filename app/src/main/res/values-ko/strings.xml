@@ -613,6 +613,7 @@
     <string name="subtype_st">소토어</string>
     <string name="subtype_dru">다르그와어(우라키)</string>
     <string name="subtype_mhr">동부 마리어</string>
+    <string name="subtype_pms">피에몬테어</string>
     <string name="subtype_tok">토키 포나</string>
     <string name="subtype_with_layout_generic">%1$s (%2$s)</string>
     <string name="subtype_generic_extended">%s (확장)</string>

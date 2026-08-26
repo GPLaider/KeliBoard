@@ -6,6 +6,7 @@ import helium314.keyboard.keyboard.internal.KeyboardParams
 import helium314.keyboard.keyboard.internal.keyboard_parser.LocaleKeyboardInfos
 import helium314.keyboard.latin.LatinIME
 import helium314.keyboard.latin.common.LocaleUtils.constructLocale
+import helium314.keyboard.latin.common.LocaleUtils.localizedDisplayName
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.settings.SettingsSubtype.Companion.toSettingsSubtype
 import helium314.keyboard.latin.utils.LayoutType
@@ -18,6 +19,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLog
+import java.util.Locale
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -36,6 +38,10 @@ class SubtypeTest {
         params.mId = KeyboardLayoutSet.getFakeKeyboardId(KeyboardElement.ALPHABET)
         params.mPopupKeyOrder.add(POPUP_KEYS_LAYOUT)
         LocaleKeyboardInfos.addLocaleKeyTextsToParams(latinIME, params, LocaleKeyboardInfos.POPUP_KEYS_NORMAL)
+    }
+
+    @Test fun piedmonteseHasKoreanDisplayName() {
+        assertEquals("피에몬테어", "pms".constructLocale().localizedDisplayName(latinIME.resources, Locale.KOREAN))
     }
 
     @Test fun emptyAdditionalSubtypesResultsInEmptyList() {

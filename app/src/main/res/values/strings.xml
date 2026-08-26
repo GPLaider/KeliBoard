@@ -451,6 +451,8 @@
     <string name="subtype_dru">Dargwa (Urakhi)</string>
     <!-- Name for Eastern Mari (https://en.wikipedia.org/wiki/Meadow_Mari_language) keyboard subtype -->
     <string name="subtype_mhr">Mari (Eastern)</string>
+    <!-- Name for Piedmontese (https://en.wikipedia.org/wiki/Piedmontese_language) keyboard subtype -->
+    <string name="subtype_pms">Piedmontese</string>
     <!-- Name for Toki Pona (https://en.wikipedia.org/wiki/Toki_Pona) keyboard subtype -->
     <string name="subtype_tok">Toki Pona</string>
     <!-- Description for a generic language / layout combination. %1$s is the language, %2$s is the layout -->
