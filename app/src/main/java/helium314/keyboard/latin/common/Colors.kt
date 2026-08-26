@@ -312,7 +312,12 @@ class DynamicColors(context: Context, override val themeStyle: String, override 
             drawable.colorFilter = getColorFilter(color)
             return
         }
-        DrawableCompat.setTintMode(drawable, PorterDuff.Mode.MULTIPLY)
+        // Holo's grey functional/action key backgrounds muddy light dynamic colors with MULTIPLY.
+        val tintMode = if (themeStyle == STYLE_HOLO && !isNight
+                && (color == FUNCTIONAL_KEY_BACKGROUND || color == ACTION_KEY_BACKGROUND))
+            PorterDuff.Mode.SRC_IN
+        else PorterDuff.Mode.MULTIPLY
+        DrawableCompat.setTintMode(drawable, tintMode)
         DrawableCompat.setTintList(drawable, colorStateList)
     }
 
