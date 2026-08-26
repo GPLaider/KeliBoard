@@ -197,6 +197,27 @@ class InputLogicTest {
         assertEquals("ㅛ.", text)
     }
 
+    // https://github.com/HeliBorg/HeliBoard/issues/2004
+    @Test fun combineHangulAfterInputStarts() {
+        inputLogic.startInput("hangul", settingsValues)
+        assertEquals("hangul", composer.combiningSpec)
+        chainInput("ㄴㅏ")
+        assertEquals("나", text)
+    }
+
+    // https://github.com/HeliBorg/HeliBoard/issues/214
+    @Test fun punctuationAfterHangulWord() {
+        latinIME.switchToSubtype(SubtypeSettings.getResourceSubtypesForLocale("ko".constructLocale()).first())
+        chainInput("ㅇㅏㄴㄴㅕㅇ.")
+        assertEquals("안녕.", text)
+    }
+
+    @Test fun commaAfterHangulWord() {
+        latinIME.switchToSubtype(SubtypeSettings.getResourceSubtypesForLocale("ko".constructLocale()).first())
+        chainInput("ㅇㅏㄴㄴㅕㅇ,")
+        assertEquals("안녕,", text)
+    }
+
     @Test fun deleteHangulInDebugMode() { // issue 1551, later only happened on phone
         latinIME.switchToSubtype(SubtypeSettings.getResourceSubtypesForLocale("ko".constructLocale()).first())
         setText("ㅛㅛ ")
@@ -757,7 +778,7 @@ class InputLogicTest {
         latinIME.onEvent(Event.createEventForCodePointFromUnknownSource(codePoint))
         handleMessages()
 
-        if (!latinIME.prefs().getString(Settings.PREF_SELECTED_SUBTYPE, "")!!.contains("CombiningRules") // check fails if combiner merges symbols
+        if (composer.combiningSpec.isEmpty() // check fails if a combiner merges symbols
             && !(codePoint == Constants.CODE_SPACE && oldBefore.lastOrNull() == ' ') // check fails when 2 spaces are converted into a period
             && !latinIME.mInputLogic.mSuggestedWords.mWillAutoCorrect // autocorrect obviously creates inconsistencies
             ) {

@@ -1,8 +1,8 @@
 [
   [
-    { "label": "ㅣ", "code": 57344, "width": 0.25, "popup": { "main": { "label": "1", "type": "numeric" } } },
-    { "label": "ㆍ", "code": 57345, "width": 0.25, "popup": { "main": { "label": "2", "type": "numeric" } } },
-    { "label": "ㅡ", "code": 57346, "width": 0.25, "popup": { "main": { "label": "3", "type": "numeric" } } }
+    { "label": "ㅣ", "code": 57344, "width": 0.25, "labelFlags": 256, "popup": { "main": { "label": "1", "type": "numeric" } } },
+    { "label": "ㆍ", "code": 57345, "width": 0.25, "labelFlags": 256, "popup": { "main": { "label": "2", "type": "numeric" } } },
+    { "label": "ㅡ", "code": 57346, "width": 0.25, "labelFlags": 256, "popup": { "main": { "label": "3", "type": "numeric" } } }
   ],
   [
     { "label": "ㄱㅋ", "code": 57360, "width": 0.25, "popup": { "main": { "label": "4", "type": "numeric" } } },

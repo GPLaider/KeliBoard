@@ -175,6 +175,9 @@ f""", // no newline at the end
             ),
             keys[0].map { it.mCode }
         )
+        assertTrue(keys[0].take(3).all {
+            it.mLabelFlags and 0x1c0 == Key.LABEL_FLAGS_FOLLOW_KEY_HINT_LETTER_RATIO
+        })
         assertEquals(
             listOf(
                 KeyCode.SYMBOL_ALPHA,
