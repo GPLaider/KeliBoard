@@ -22,8 +22,11 @@ import helium314.keyboard.latin.utils.TextRange
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 // todo: actually this test could/should be significantly expanded...
 @RunWith(RobolectricTestRunner::class)
@@ -193,6 +196,23 @@ class StringUtilsTest {
         assertEquals(3, moveStepsToCharCount("abcd", 3))
         assertEquals(5, moveStepsToCharCount("\uD83C\uDFF4\u200D☠️\uD83C\uDFF3️\u200D\uD83C\uDF08", 1))
         assertEquals(-6, moveStepsToCharCount("\uD83C\uDFF4\u200D☠️\uD83C\uDFF3️\u200D\uD83C\uDF08", -1))
+    }
+
+    @Test fun `break iterator is initialized per thread`() {
+        val field = Class.forName("helium314.keyboard.latin.common.StringUtilsKt")
+            .getDeclaredField("LocalBreakIterator")
+            .apply { isAccessible = true }
+        @Suppress("UNCHECKED_CAST")
+        val localBreakIterator = field.get(null) as ThreadLocal<*>
+        val executor = Executors.newSingleThreadExecutor()
+        try {
+            assertNotNull(executor.submit(Callable {
+                moveStepsToCharCount("abcd", -1)
+                localBreakIterator.get()
+            }).get())
+        } finally {
+            executor.shutdownNow()
+        }
     }
 
     @Test fun isEmojiDetectsAllAvailableEmojis() {
