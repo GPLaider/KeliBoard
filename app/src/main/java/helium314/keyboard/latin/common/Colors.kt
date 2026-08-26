@@ -273,12 +273,12 @@ class DynamicColors(context: Context, override val themeStyle: String, override 
 
     override fun get(color: ColorType): Int = when (color) {
         TOOL_BAR_KEY_ENABLED_BACKGROUND, EMOJI_CATEGORY_SELECTED, ACTION_KEY_BACKGROUND,
-        CLIPBOARD_PIN, SHIFT_KEY_ICON -> accent
+        CLIPBOARD_PIN -> accent
         AUTOFILL_BACKGROUND_CHIP, GESTURE_PREVIEW, POPUP_KEYS_BACKGROUND, MORE_SUGGESTIONS_BACKGROUND, KEY_PREVIEW_BACKGROUND -> adjustedBackground
         TOOL_BAR_EXPAND_KEY_BACKGROUND -> if (!isNight) accent else doubleAdjustedBackground
         GESTURE_TRAIL -> gesture
         KEY_TEXT, SUGGESTION_AUTO_CORRECT, REMOVE_SUGGESTION_ICON, EMOJI_KEY_TEXT, KEY_PREVIEW_TEXT, POPUP_KEY_TEXT,
-            KEY_ICON, POPUP_KEY_ICON, ONE_HANDED_MODE_BUTTON, EMOJI_CATEGORY, TOOL_BAR_KEY, FUNCTIONAL_KEY_TEXT,
+            KEY_ICON, POPUP_KEY_ICON, SHIFT_KEY_ICON, ONE_HANDED_MODE_BUTTON, EMOJI_CATEGORY, TOOL_BAR_KEY, FUNCTIONAL_KEY_TEXT,
             EMOJI_SEARCH_TEXT, CLIPBOARD_SUGGESTION_ICON -> keyText
         KEY_HINT_TEXT -> keyHintText
         SPACE_BAR_TEXT -> spaceBarText
@@ -330,9 +330,9 @@ class DynamicColors(context: Context, override val themeStyle: String, override 
     }
 
     private fun getColorFilter(color: ColorType): ColorFilter? = when (color) {
-        EMOJI_CATEGORY_SELECTED, CLIPBOARD_PIN, SHIFT_KEY_ICON -> accentColorFilter
+        EMOJI_CATEGORY_SELECTED, CLIPBOARD_PIN -> accentColorFilter
         REMOVE_SUGGESTION_ICON, EMOJI_CATEGORY, KEY_TEXT,
-            KEY_ICON, ONE_HANDED_MODE_BUTTON, TOOL_BAR_KEY, TOOL_BAR_EXPAND_KEY -> keyTextFilter
+            KEY_ICON, SHIFT_KEY_ICON, ONE_HANDED_MODE_BUTTON, TOOL_BAR_KEY, TOOL_BAR_EXPAND_KEY -> keyTextFilter
         KEY_PREVIEW_BACKGROUND -> adjustedBackgroundFilter
         ACTION_KEY_ICON -> actionKeyIconColorFilter
         else -> colorFilter(get(color))
@@ -476,13 +476,13 @@ class DefaultColors (
 
     override fun get(color: ColorType): Int = when (color) {
         TOOL_BAR_KEY_ENABLED_BACKGROUND, EMOJI_CATEGORY_SELECTED, ACTION_KEY_BACKGROUND,
-            CLIPBOARD_PIN, SHIFT_KEY_ICON -> accent
+            CLIPBOARD_PIN -> accent
         AUTOFILL_BACKGROUND_CHIP -> if (themeStyle == STYLE_MATERIAL && !hasKeyBorders) background else adjustedBackground
         GESTURE_PREVIEW, POPUP_KEYS_BACKGROUND, MORE_SUGGESTIONS_BACKGROUND, KEY_PREVIEW_BACKGROUND -> adjustedBackground
         TOOL_BAR_EXPAND_KEY_BACKGROUND, CLIPBOARD_SUGGESTION_BACKGROUND -> doubleAdjustedBackground
         GESTURE_TRAIL -> gesture
         KEY_TEXT, REMOVE_SUGGESTION_ICON, FUNCTIONAL_KEY_TEXT, KEY_ICON, EMOJI_KEY_TEXT,
-            POPUP_KEY_TEXT, POPUP_KEY_ICON, KEY_PREVIEW_TEXT, EMOJI_SEARCH_TEXT, CLIPBOARD_SUGGESTION_ICON -> keyText
+            POPUP_KEY_TEXT, POPUP_KEY_ICON, SHIFT_KEY_ICON, KEY_PREVIEW_TEXT, EMOJI_SEARCH_TEXT, CLIPBOARD_SUGGESTION_ICON -> keyText
         KEY_HINT_TEXT -> keyHintText
         SPACE_BAR_TEXT -> spaceBarText
         FUNCTIONAL_KEY_BACKGROUND, EMOJI_SEARCH_BACKGROUND -> functionalKey
@@ -551,8 +551,8 @@ class DefaultColors (
     }
 
     private fun getColorFilter(color: ColorType): ColorFilter? = when (color) {
-        EMOJI_CATEGORY_SELECTED, CLIPBOARD_PIN, SHIFT_KEY_ICON -> accentColorFilter
-        KEY_TEXT, KEY_ICON -> keyTextFilter
+        EMOJI_CATEGORY_SELECTED, CLIPBOARD_PIN -> accentColorFilter
+        KEY_TEXT, KEY_ICON, SHIFT_KEY_ICON -> keyTextFilter
         REMOVE_SUGGESTION_ICON, EMOJI_CATEGORY, ONE_HANDED_MODE_BUTTON, TOOL_BAR_KEY, TOOL_BAR_EXPAND_KEY -> suggestionTextFilter
         KEY_PREVIEW_BACKGROUND -> adjustedBackgroundFilter
         ACTION_KEY_ICON -> actionKeyIconColorFilter
