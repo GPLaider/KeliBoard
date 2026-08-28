@@ -331,6 +331,8 @@
     <string name="split_spacer_scale">분할 간격</string>
     <string name="suggest_clipboard_content">클립보드 내용 추천</string>
     <string name="suggest_clipboard_content_summary">최근 복사한 클립보드 내용을 추천으로 표시</string>
+    <string name="suggest_recent_screenshots">최근 스크린샷 추천</string>
+    <string name="suggest_recent_screenshots_summary">갤러리의 최근 스크린샷을 추천 막대에 표시합니다. 전체 사진 접근 권한이 필요합니다.</string>
     <string name="suggest_emojis">이모지 추천</string>
     <string name="suggest_emojis_summary">일반 추천에 이모지 사전 사용</string>
     <string name="suggest_punctuation">문장부호 추천</string>

@@ -1,17 +1,28 @@
 package helium314.keyboard
 
+import android.Manifest
 import android.app.KeyguardManager
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ContentProvider
 import android.content.Context
+import android.content.ContextWrapper
+import android.content.ContentValues
+import android.content.pm.ProviderInfo
+import android.database.MatrixCursor
+import android.net.Uri
+import android.provider.MediaStore
 import android.text.InputType
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.widget.ImageView
 import android.widget.TextView
 import helium314.keyboard.keyboard.KeyboardElement
 import helium314.keyboard.keyboard.KeyboardSwitcher
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
+import helium314.keyboard.latin.ClipboardHistoryManager
 import helium314.keyboard.latin.LatinIME
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.RichInputMethodManager
@@ -24,6 +35,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowContentResolver
 import org.robolectric.shadows.ShadowLog
 import org.robolectric.shadows.ShadowLooper
 import org.robolectric.util.ReflectionHelpers
@@ -33,6 +45,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 // todo: expand with swipe & touch stuff
@@ -177,6 +190,90 @@ class InputTest {
             assertEquals("바로 붙여넣기", ShadowInputMethodService.text)
         } finally {
             prefs.edit().putBoolean(Settings.PREF_ENABLE_CLIPBOARD_HISTORY, historyEnabled).apply()
+        }
+    }
+
+    @Test fun recentScreenshotDetectionRejectsPrivateAndUnrelatedMedia() {
+        assertTrue(ClipboardHistoryManager.isScreenshot("Screenshot_20260829.png", null, null))
+        assertTrue(ClipboardHistoryManager.isScreenshot("image.png", "Pictures/Screenshots/", null))
+        assertTrue(ClipboardHistoryManager.isScreenshot("image.png", "Pictures/스크린샷/", null))
+        assertFalse(ClipboardHistoryManager.isScreenshot("IMG_20260829.jpg", "DCIM/Camera/", "Camera"))
+        assertTrue(ClipboardHistoryManager.canSuggestRecentScreenshot(false, InputType.TYPE_CLASS_TEXT))
+        assertFalse(ClipboardHistoryManager.canSuggestRecentScreenshot(true, InputType.TYPE_CLASS_TEXT))
+        assertFalse(ClipboardHistoryManager.canSuggestRecentScreenshot(
+            false, InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        ))
+        assertFalse(ClipboardHistoryManager.canSuggestRecentScreenshot(
+            false, InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+        ))
+    }
+
+    @Test fun recentGalleryScreenshotAppearsButNotInPasswordFields() {
+        val prefs = latinIME.prefs()
+        val enabled = prefs.getBoolean(Settings.PREF_SUGGEST_RECENT_SCREENSHOTS, false)
+        val clipboard = latinIME.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val resolver = latinIME.contentResolver
+        val media = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+        val now = System.currentTimeMillis()
+        val previousProvider = ShadowContentResolver.getProvider(media)
+        val provider = object : ContentProvider() {
+            override fun onCreate() = true
+            override fun query(
+                uri: Uri,
+                projection: Array<out String>?,
+                selection: String?,
+                selectionArgs: Array<out String>?,
+                sortOrder: String?,
+            ) = MatrixCursor(arrayOf(
+                MediaStore.Images.Media._ID,
+                MediaStore.Images.Media.DISPLAY_NAME,
+                MediaStore.Images.Media.MIME_TYPE,
+                MediaStore.Images.Media.DATE_ADDED,
+                MediaStore.Images.Media.DATE_TAKEN,
+                MediaStore.Images.Media.BUCKET_DISPLAY_NAME,
+                MediaStore.Images.Media.RELATIVE_PATH,
+            )).apply {
+                addRow(arrayOf<Any?>(
+                    42L, "Screenshot_20260829.png", "image/png", now / 1000, now,
+                    "Screenshots", "Pictures/Screenshots/"
+                ))
+            }
+            override fun getType(uri: Uri) = "image/png"
+            override fun insert(uri: Uri, values: ContentValues?) = null
+            override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?) = 0
+            override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?) = 0
+        }.apply {
+            attachInfo(latinIME, ProviderInfo().apply { authority = "media" })
+        }
+        ShadowContentResolver.registerProviderInternal("media", provider)
+        val shadowResolver = shadowOf(resolver)
+        val parent = keyboardSwitcher.stripContainer.rootView.findViewById<ViewGroup>(R.id.suggestions_strip)
+        val textEditor = EditorInfo().apply { inputType = InputType.TYPE_CLASS_TEXT }
+        val hadImageAccess = ClipboardHistoryManager.hasFullImageAccess(latinIME)
+        val permissionContext = ContextWrapper(latinIME)
+
+        try {
+            if (!hadImageAccess) shadowOf(permissionContext).grantPermissions(Manifest.permission.READ_MEDIA_IMAGES)
+            assertTrue(ClipboardHistoryManager.hasFullImageAccess(latinIME))
+            prefs.edit().putBoolean(Settings.PREF_SUGGEST_RECENT_SCREENSHOTS, true).apply()
+            clipboard.clearPrimaryClip()
+            latinIME.onStartInputView(textEditor, false)
+            assertFalse(Settings.getValues().mIsLocked)
+
+            val suggestion = latinIME.clipboardHistoryManager.getClipboardSuggestionView(textEditor, parent)
+            assertNotNull(suggestion)
+            assertEquals(View.VISIBLE, suggestion.findViewById<ImageView>(R.id.clipboard_suggestion_image).visibility)
+            assertTrue(shadowResolver.getContentObservers(media).isNotEmpty())
+
+            val passwordEditor = EditorInfo().apply {
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            }
+            assertNull(latinIME.clipboardHistoryManager.getClipboardSuggestionView(passwordEditor, parent))
+            assertTrue(shadowResolver.getContentObservers(media).isEmpty())
+        } finally {
+            prefs.edit().putBoolean(Settings.PREF_SUGGEST_RECENT_SCREENSHOTS, enabled).apply()
+            if (!hadImageAccess) shadowOf(permissionContext).denyPermissions(Manifest.permission.READ_MEDIA_IMAGES)
+            ShadowContentResolver.registerProviderInternal("media", previousProvider)
         }
     }
 

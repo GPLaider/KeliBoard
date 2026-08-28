@@ -2,18 +2,28 @@
 
 package helium314.keyboard.latin
 
+import android.Manifest
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
+import android.content.ContentUris
 import android.content.Context
+import android.content.pm.PackageManager
+import android.database.ContentObserver
 import android.net.Uri
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.text.InputType
 import android.text.TextUtils
+import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import androidx.core.content.ContextCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
@@ -46,6 +56,21 @@ class ClipboardHistoryManager(
     private var clipboardSuggestionView: View? = null
     private var clipboardDao: ClipboardDao? = null
     private var tempPrimaryClip = false
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val refreshScreenshotSuggestion = Runnable {
+        if (latinIME.isInputViewShown) latinIME.setNeutralSuggestionStrip()
+    }
+    private val screenshotObserver = object : ContentObserver(mainHandler) {
+        override fun onChange(selfChange: Boolean, uri: Uri?) {
+            screenshotQueryValid = false
+            mainHandler.removeCallbacks(refreshScreenshotSuggestion)
+            mainHandler.postDelayed(refreshScreenshotSuggestion, SCREENSHOT_SETTLE_MILLIS)
+        }
+    }
+    private var screenshotObserverRegistered = false
+    private var screenshotQueryValid = false
+    private var recentScreenshot: RecentScreenshot? = null
+    private var dismissedScreenshotUri: Uri? = null
 
     fun onCreate() {
         clipboardManager = latinIME.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -57,6 +82,13 @@ class ClipboardHistoryManager(
 
     fun onDestroy() {
         clipboardManager.removePrimaryClipChangedListener(this)
+        if (screenshotObserverRegistered)
+            latinIME.contentResolver.unregisterContentObserver(screenshotObserver)
+        mainHandler.removeCallbacks(refreshScreenshotSuggestion)
+    }
+
+    fun onInputViewHidden() {
+        setScreenshotObserverEnabled(false)
     }
 
     override fun onPrimaryClipChanged() {
@@ -174,18 +206,24 @@ class ClipboardHistoryManager(
         // but a cache has to consider a few possible changes, so better don't implement without need
         clipboardSuggestionView = null
 
-        // get the content, or return null
-        if (!latinIME.mSettings.current.mSuggestClipboardContent) return null
-        if (dontShowCurrentSuggestion) return null
+        val inputType = editorInfo?.inputType ?: InputType.TYPE_NULL
+        val now = System.currentTimeMillis()
+        val clipboardData = getRecentClipboardSuggestion(now)
+        val screenshotsEnabled = latinIME.prefs().getBoolean(
+            Settings.PREF_SUGGEST_RECENT_SCREENSHOTS, Defaults.PREF_SUGGEST_RECENT_SCREENSHOTS
+        ) && parent != null && canSuggestRecentScreenshot(latinIME.mSettings.current.mIsLocked, inputType)
+        val screenshotObserverEnabled = setScreenshotObserverEnabled(screenshotsEnabled)
         if (parent == null) return null
-        val clipData = clipboardManager.primaryClip ?: return null
-        if (clipData.itemCount == 0) return null
+        val screenshot = if (screenshotObserverEnabled && clipboardData == null)
+            getRecentScreenshot(now)
+        else null
+        val clipData = clipboardData ?: screenshot?.let {
+            ClipData(ClipDescription(it.name, arrayOf(it.mimeType)), ClipData.Item(it.uri))
+        } ?: return null
         val clipItem = clipData.getItemAt(0) ?: return null
         val hasText = clipData.description?.hasMimeType("text/*") == true
         val hasImage = clipData.description?.hasMimeType("image/*") == true && clipItem.uri != null
         if (!hasText && !hasImage) return null
-        val timeStamp = ClipboardManagerCompat.getClipTimestamp(clipData)
-        if (System.currentTimeMillis() - timeStamp > RECENT_TIME_MILLIS) return null
         val content = clipItem.coerceToText(latinIME)
 
         // create the view
@@ -194,7 +232,6 @@ class ClipboardHistoryManager(
         val clipIcon = KeyboardIconsSet.instance.getIconDrawable(ToolbarKey.PASTE.name.lowercase())
         clipIcon?.setBounds(0, 0, textView.lineHeight, textView.lineHeight) // scale the icon to the text
         textView.setCompoundDrawablesRelative(clipIcon, null, null, null)
-        val inputType = editorInfo?.inputType ?: InputType.TYPE_NULL
         if (hasText) {
             if (TextUtils.isEmpty(content)) return null
             if (InputTypeUtils.isNumberInputType(inputType) && !content.isValidNumber()) return null
@@ -204,8 +241,11 @@ class ClipboardHistoryManager(
         val onClickListener = View.OnClickListener {
             dontShowCurrentSuggestion = true
             if (hasText) latinIME.onTextInput(content.toString())
-            else latinIME.onEvent(Event.createSoftwareKeypressEvent(KeyCode.CLIPBOARD_PASTE, 0,
-                Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false))
+            else if (screenshot != null) latinIME.mKeyboardActionListener.onContent(
+                InputContentInfoCompat(screenshot.uri, clipData.description, null)
+            ) else latinIME.onEvent(Event.createSoftwareKeypressEvent(KeyCode.CLIPBOARD_PASTE, 0,
+                    Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false))
+            if (screenshot != null) dismissedScreenshotUri = screenshot.uri
             AudioAndHapticFeedbackManager.getInstance().performHapticAndAudioFeedback(KeyCode.NOT_SPECIFIED, it, HapticEvent.KEY_PRESS)
             binding.root.isGone = true
         }
@@ -216,10 +256,18 @@ class ClipboardHistoryManager(
             val imageView = binding.clipboardSuggestionImage
             imageView.isVisible = true
             try {
-                imageView.setImageURI(clipItem.uri)
+                if (screenshot != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    try {
+                        imageView.setImageBitmap(latinIME.contentResolver.loadThumbnail(clipItem.uri, Size(256, 256), null))
+                    } catch (_: Exception) {
+                        imageView.setImageURI(clipItem.uri)
+                    }
+                } else imageView.setImageURI(clipItem.uri)
+                imageView.contentDescription = clipData.description?.label
             } catch (e: Exception) {
                 Log.w(TAG, "error setting clipboard image", e) // happens with SecurityException: Permission Denial
-                return null
+                if (screenshot == null) return null
+                imageView.setImageResource(R.drawable.ic_dictionary)
             }
             imageView.setOnClickListener(onClickListener)
         }
@@ -228,7 +276,11 @@ class ClipboardHistoryManager(
         closeButton.setImageDrawable(KeyboardIconsSet.instance.getIconDrawable(ToolbarKey.CLOSE_HISTORY.name.lowercase()))
         closeButton.layoutParams.width = textView.lineHeight // scale the icon to the text
         closeButton.layoutParams.height = textView.lineHeight
-        closeButton.setOnClickListener { removeClipboardSuggestion() }
+        closeButton.setOnClickListener {
+            if (screenshot != null) dismissedScreenshotUri = screenshot.uri
+            else dontShowCurrentSuggestion = true
+            removeSuggestionView()
+        }
 
         val colors = latinIME.mSettings.current.mColors
         textView.setTextColor(colors.get(ColorType.KEY_TEXT))
@@ -242,6 +294,10 @@ class ClipboardHistoryManager(
 
     private fun removeClipboardSuggestion() {
         dontShowCurrentSuggestion = true
+        removeSuggestionView()
+    }
+
+    private fun removeSuggestionView() {
         val csv = clipboardSuggestionView ?: return
         if (csv.parent != null && !csv.isGone) {
             // clipboard view is shown ->
@@ -251,6 +307,99 @@ class ClipboardHistoryManager(
         csv.isGone = true
     }
 
+    private fun getRecentClipboardSuggestion(now: Long): ClipData? {
+        if (!latinIME.mSettings.current.mSuggestClipboardContent || dontShowCurrentSuggestion) return null
+        val clipData = clipboardManager.primaryClip ?: return null
+        if (clipData.itemCount == 0) return null
+        val item = clipData.getItemAt(0) ?: return null
+        val hasText = clipData.description?.hasMimeType("text/*") == true
+        if (hasText && TextUtils.isEmpty(item.coerceToText(latinIME))) return null
+        val supported = hasText ||
+                (clipData.description?.hasMimeType("image/*") == true && item.uri != null)
+        if (!supported || now - ClipboardManagerCompat.getClipTimestamp(clipData) > RECENT_TIME_MILLIS) return null
+        return clipData
+    }
+
+    private fun setScreenshotObserverEnabled(enabled: Boolean): Boolean {
+        val shouldEnable = enabled && hasFullImageAccess(latinIME)
+        if (shouldEnable == screenshotObserverRegistered) return shouldEnable
+        if (shouldEnable) {
+            latinIME.contentResolver.registerContentObserver(imageCollectionUri(), true, screenshotObserver)
+            screenshotQueryValid = false
+        } else {
+            latinIME.contentResolver.unregisterContentObserver(screenshotObserver)
+            recentScreenshot = null
+            dismissedScreenshotUri = null
+            screenshotQueryValid = false
+        }
+        screenshotObserverRegistered = shouldEnable
+        return shouldEnable
+    }
+
+    private fun getRecentScreenshot(now: Long): RecentScreenshot? {
+        if (!screenshotQueryValid) {
+            recentScreenshot = queryRecentScreenshot(now)
+            screenshotQueryValid = true
+        }
+        return recentScreenshot?.takeIf {
+            now - it.timestamp <= RECENT_TIME_MILLIS && it.uri != dismissedScreenshotUri
+        }
+    }
+
+    private fun queryRecentScreenshot(now: Long): RecentScreenshot? {
+        val columns = mutableListOf(
+            MediaStore.Images.Media._ID,
+            MediaStore.Images.Media.DISPLAY_NAME,
+            MediaStore.Images.Media.MIME_TYPE,
+            MediaStore.Images.Media.DATE_ADDED,
+            MediaStore.Images.Media.DATE_TAKEN,
+            MediaStore.Images.Media.BUCKET_DISPLAY_NAME,
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            columns += MediaStore.Images.Media.RELATIVE_PATH
+        try {
+            latinIME.contentResolver.query(
+                imageCollectionUri(),
+                columns.toTypedArray(),
+                "${MediaStore.Images.Media.DATE_ADDED} >= ?",
+                arrayOf(((now - RECENT_TIME_MILLIS) / 1000).toString()),
+                "${MediaStore.Images.Media.DATE_ADDED} DESC",
+            )?.use { cursor ->
+                val id = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+                val name = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+                val mime = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.MIME_TYPE)
+                val added = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
+                val taken = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
+                val bucket = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.BUCKET_DISPLAY_NAME)
+                val path = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                    cursor.getColumnIndexOrThrow(MediaStore.Images.Media.RELATIVE_PATH)
+                else -1
+                while (cursor.moveToNext()) {
+                    val displayName = cursor.getString(name)
+                    if (!isScreenshot(displayName, if (path >= 0) cursor.getString(path) else null, cursor.getString(bucket)))
+                        continue
+                    val uri = ContentUris.withAppendedId(imageCollectionUri(), cursor.getLong(id))
+                    val timestamp = maxOf(cursor.getLong(added) * 1000, cursor.getLong(taken))
+                    return RecentScreenshot(uri, timestamp, displayName ?: "Screenshot", cursor.getString(mime) ?: "image/*")
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "could not query recent screenshots", e)
+        }
+        return null
+    }
+
+    private fun imageCollectionUri(): Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+        MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+    else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+
+    private data class RecentScreenshot(
+        val uri: Uri,
+        val timestamp: Long,
+        val name: String,
+        val mimeType: String,
+    )
+
     companion object {
         private val TAG = "ClipboardHistoryManager"
 
@@ -258,6 +407,32 @@ class ClipboardHistoryManager(
         private var dontShowCurrentSuggestion: Boolean = false
 
         const val RECENT_TIME_MILLIS = 3 * 60 * 1000L // 3 minutes (for clipboard suggestions)
+        private const val SCREENSHOT_SETTLE_MILLIS = 500L
+
+        fun imageReadPermissions(): Array<String> = when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+            )
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
+            else -> arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+
+        fun hasFullImageAccess(context: Context): Boolean {
+            val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                Manifest.permission.READ_MEDIA_IMAGES
+            else Manifest.permission.READ_EXTERNAL_STORAGE
+            return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+        }
+
+        internal fun canSuggestRecentScreenshot(deviceLocked: Boolean, inputType: Int): Boolean =
+            !deviceLocked && !InputTypeUtils.isAnyPasswordInputType(inputType) && !InputTypeUtils.isNumberInputType(inputType)
+
+        internal fun isScreenshot(displayName: String?, relativePath: String?, bucketName: String?): Boolean =
+            sequenceOf(displayName, relativePath, bucketName).filterNotNull().any {
+                val normalized = it.lowercase().replace(" ", "").replace("_", "").replace("-", "")
+                "screenshot" in normalized || "screencapture" in normalized || "스크린샷" in it
+            }
 
         private fun maySaveFromUri(uri: Uri?, context: Context): Boolean {
             val maxSize = context.prefs().getInt(Settings.PREF_CLIPBOARD_FILES_SIZE_LIMIT, Defaults.PREF_CLIPBOARD_FILES_SIZE_LIMIT)

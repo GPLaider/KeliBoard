@@ -1,0 +1,4 @@
+- Optional recent screenshot suggestions from the Android gallery
+- New screenshots refresh automatically while the keyboard is visible
+- Full photo access is requested only when the feature is enabled
+- Screenshots are never queried in locked, password, or number fields

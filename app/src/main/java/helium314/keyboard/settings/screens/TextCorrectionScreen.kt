@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import helium314.keyboard.keyboard.KeyboardSwitcher
+import helium314.keyboard.latin.ClipboardHistoryManager
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.permissions.PermissionsUtil
 import helium314.keyboard.latin.settings.Defaults
@@ -90,6 +91,7 @@ fun TextCorrectionScreen(
         if (prefs.getBoolean(Settings.PREF_SUGGEST_PUNCTUATION, Defaults.PREF_SUGGEST_PUNCTUATION))
             Settings.PREF_PUNCTUATION_SUGGESTIONS else null,
         Settings.PREF_SUGGEST_CLIPBOARD_CONTENT,
+        Settings.PREF_SUGGEST_RECENT_SCREENSHOTS,
         Settings.PREF_USE_CONTACTS,
         Settings.PREF_USE_APPS,
         if (prefs.getBoolean(Settings.PREF_KEY_USE_PERSONALIZED_DICTS, Defaults.PREF_KEY_USE_PERSONALIZED_DICTS))
@@ -242,6 +244,25 @@ fun createCorrectionSettings(context: Context) = listOf(
         R.string.suggest_clipboard_content, R.string.suggest_clipboard_content_summary
     ) {
         SwitchPreference(it, Defaults.PREF_SUGGEST_CLIPBOARD_CONTENT)
+    },
+    Setting(context, Settings.PREF_SUGGEST_RECENT_SCREENSHOTS,
+        R.string.suggest_recent_screenshots, R.string.suggest_recent_screenshots_summary
+    ) { setting ->
+        val activity = LocalContext.current.getActivity() ?: return@Setting
+        var granted by remember { mutableStateOf(ClipboardHistoryManager.hasFullImageAccess(activity)) }
+        val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            granted = ClipboardHistoryManager.hasFullImageAccess(activity)
+            if (granted)
+                activity.prefs().edit { putBoolean(setting.key, true) }
+        }
+        SwitchPreference(setting, Defaults.PREF_SUGGEST_RECENT_SCREENSHOTS,
+            allowCheckedChange = {
+                if (it && !granted) {
+                    launcher.launch(ClipboardHistoryManager.imageReadPermissions())
+                    false
+                } else true
+            }
+        )
     },
     Setting(context, Settings.PREF_USE_CONTACTS,
         R.string.use_contacts_dict, R.string.use_contacts_dict_summary
