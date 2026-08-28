@@ -1,0 +1,4 @@
+- Proper shift/caps English QWERTY in lock-screen and FORCE_ASCII password fields
+- Fixed Cheonjiin number-row alignment while preserving its Samsung-style 4-column keypad
+- Clipboard suggestions now refresh immediately, even when clipboard history is disabled
+- Removed a dead external Layout Maker link

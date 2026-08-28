@@ -66,7 +66,8 @@ open class KeyboardBuilder<KP : KeyboardParams>(protected val mContext: Context,
 
     private fun setupParams() {
         val sv = Settings.getValues()
-        mParams.mAllowRedundantPopupKeys = !sv.mRemoveRedundantPopups
+        mParams.mAllowRedundantPopupKeys = !sv.mRemoveRedundantPopups &&
+                !(mParams.mId.numberRowEnabled && mParams.mId.subtype.mainLayoutName == "korean_cheonjiin")
         mParams.mProximityCharsCorrectionEnabled = mParams.mId.element == KeyboardElement.ALPHABET
                 || (mParams.mId.element.isAlphabet && !mParams.mId.subtype.hasExtraValue(Constants.Subtype.ExtraValue.NO_SHIFT_PROXIMITY_CORRECTION))
 

@@ -38,6 +38,7 @@ import helium314.keyboard.accessibility.AccessibilityUtils;
 import helium314.keyboard.compat.ConfigurationCompatKt;
 import helium314.keyboard.compat.EditorInfoCompatUtils;
 import helium314.keyboard.compat.ImeCompat;
+import helium314.keyboard.compat.IsLockedCompatKt;
 import helium314.keyboard.event.HapticEvent;
 import helium314.keyboard.keyboard.KeyboardActionListener;
 import helium314.keyboard.keyboard.KeyboardActionListenerImpl;
@@ -866,7 +867,8 @@ public class LatinIME extends InputMethodService implements
         // settings, so currentSettingsValues can't be final.
         SettingsValues currentSettingsValues = mSettings.getCurrent();
         boolean inputTypeChanged = !currentSettingsValues.isSameInputType(editorInfo);
-        boolean isDifferentTextField = !restarting || inputTypeChanged;
+        boolean isDifferentTextField = !restarting || inputTypeChanged
+                || currentSettingsValues.mIsLocked != IsLockedCompatKt.isDeviceLocked(this);
 
         // we want to reload the settings before calling updateKeyboardTheme, because updateKeyboardTheme reads SettingsValues.mToolbarMode
         if (isDifferentTextField || !currentSettingsValues.hasSameOrientation(getResources().getConfiguration())) {

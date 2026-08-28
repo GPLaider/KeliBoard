@@ -151,7 +151,7 @@ class KeyboardLayoutSet internal constructor(private val mContext: Context, priv
             val asciiCapable = subtype.rawSubtype.isAsciiCapable
             val forceAscii = (params.editorInfo.imeOptions and EditorInfo.IME_FLAG_FORCE_ASCII) != 0
             params.subtype = when {
-                forceAscii && !asciiCapable && params.deviceLocked ->
+                forceAscii && !asciiCapable && (params.deviceLocked || InputTypeUtils.isAnyPasswordInputType(params.editorInfo.inputType)) ->
                     RichInputMethodSubtype.get(SettingsSubtype.fallbackSubtype.toAdditionalSubtype())
                 forceAscii && !asciiCapable -> noLanguageSubtype
                 else -> subtype

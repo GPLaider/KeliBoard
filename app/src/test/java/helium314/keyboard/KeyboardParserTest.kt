@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard
 
+import android.text.InputType
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodSubtype
 import com.android.inputmethod.keyboard.ProximityInfo
@@ -126,7 +127,7 @@ f""", // no newline at the end
         }
     }
 
-    @Test fun `locked fallback is regular English qwerty with shift and caps lock`() {
+    @Test fun `secure force-ascii fallback is regular English qwerty with shift and caps lock`() {
         val fallback = RichInputMethodSubtype.get(SettingsSubtype.fallbackSubtype.toAdditionalSubtype())
         assertEquals(Locale.US, fallback.locale)
         assertEquals("qwerty", fallback.mainLayoutName)
@@ -145,6 +146,9 @@ f""", // no newline at the end
         builderParams.deviceLocked = false
         builder.setSubtype(korean)
         assertEquals("zz", builderParams.subtype.locale.language)
+        forceAscii.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        builder.setSubtype(korean)
+        assertEquals(Locale.US, builderParams.subtype.locale)
 
         val layoutParams = KeyboardLayoutSet.Params().apply {
             editorInfo = EditorInfo()
@@ -161,12 +165,19 @@ f""", // no newline at the end
         assertEquals('A'.code, codeFor(KeyboardElement.ALPHABET_SHIFT_LOCKED))
     }
 
-    @Test fun `cheonjiin uses Samsung four-column rows and normal symbols`() {
+    @Test fun `cheonjiin number row preserves Samsung four-column alignment`() {
         val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(
             Locale.KOREAN, "korean_cheonjiin", false
         )
-        val (keyboard, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET)
-        assertEquals(listOf(4, 4, 4, 5), keys.map { it.size })
+        val (baseKeyboard, baseKeys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET)
+        val (keyboard, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET, numberRowEnabled = true)
+        assertEquals(listOf(4, 4, 4, 5), baseKeys.map { it.size })
+        assertEquals(listOf(10, 4, 4, 4, 5), keys.map { it.size })
+        assertEquals(('1'..'9').map { it.code } + '0'.code, keys[0].map { it.mCode })
+        assertEquals(
+            baseKeys.map { row -> row.map { it.mCode to it.mWidth } },
+            keys.drop(1).map { row -> row.map { it.mCode to it.mWidth } },
+        )
         assertEquals(
             listOf(
                 HangulCombiner.CHEONJIIN_VOWEL_I,
@@ -174,16 +185,16 @@ f""", // no newline at the end
                 HangulCombiner.CHEONJIIN_VOWEL_EU,
                 KeyCode.DELETE,
             ),
-            keys[0].map { it.mCode }
+            keys[1].map { it.mCode }
         )
-        assertTrue(keys[0].take(3).all {
+        assertTrue(keys[1].take(3).all {
             it.mLabelFlags and 0x1c0 == Key.LABEL_FLAGS_FOLLOW_KEY_MEDIUM_LABEL_RATIO
         })
         val drawParams = KeyDrawParams().apply { mLabelSize = 100 }
-        val vowelKeys = keyboard.sortedKeys.filter { it.label in setOf("ㅣ", "ㆍ", "ㅡ") }
+        val vowelKeys = baseKeyboard.sortedKeys.filter { it.label in setOf("ㅣ", "ㆍ", "ㅡ") }
         assertEquals(3, vowelKeys.size)
         assertTrue(vowelKeys.all { it.selectTextSize(drawParams) == 120 })
-        val consonantKeys = keys.slice(1..2).flatMap { it.take(3) } + keys[3][2]
+        val consonantKeys = keys.slice(2..3).flatMap { it.take(3) } + keys[4][2]
         assertTrue(consonantKeys.all {
             it.mLabelFlags and 0x1c0 == Key.LABEL_FLAGS_FOLLOW_KEY_LETTER_RATIO
         })
@@ -195,10 +206,11 @@ f""", // no newline at the end
                 ' '.code,
                 ','.code,
             ),
-            keys[3].map { it.mCode }
+            keys[4].map { it.mCode }
         )
-        val digitKeys = keys.take(3).flatMap { it.take(3) } + keys[3][2]
-        assertEquals(('1'..'9').map { it.code } + '0'.code, digitKeys.map { it.mPopupKeys?.first()?.mCode })
+        assertTrue(keyboard.sortedKeys.filter { it.code in 0xe000..0xe016 }.all { it.popupKeys == null })
+        val digitPopupKeys = baseKeys.take(3).flatMap { it.take(3) } + baseKeys[3][2]
+        assertEquals(('1'..'9').map { it.code } + '0'.code, digitPopupKeys.map { it.mPopupKeys?.first()?.mCode })
 
         val (_, symbolKeys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.SYMBOLS)
         assertTrue(symbolKeys.flatten().none { it.mCode in 0xe000..0xe020 })
@@ -689,7 +701,12 @@ f""", // no newline at the end
         }
     }
 
-    private fun buildKeyboard(editorInfo: EditorInfo, subtype: InputMethodSubtype, element: KeyboardElement): Pair<Keyboard, List<List<KeyParams>>> {
+    private fun buildKeyboard(
+        editorInfo: EditorInfo,
+        subtype: InputMethodSubtype,
+        element: KeyboardElement,
+        numberRowEnabled: Boolean = false,
+    ): Pair<Keyboard, List<List<KeyParams>>> {
         val layoutParams = KeyboardLayoutSet.Params()
         val editorInfoField = KeyboardLayoutSet.Params::class.java.getDeclaredField("editorInfo").apply { isAccessible = true }
         editorInfoField.set(layoutParams, editorInfo)
@@ -699,6 +716,7 @@ f""", // no newline at the end
         widthField.setInt(layoutParams, 500)
         val heightField = KeyboardLayoutSet.Params::class.java.getDeclaredField("keyboardHeight").apply { isAccessible = true }
         heightField.setInt(layoutParams, 300)
+        layoutParams.numberRowEnabled = numberRowEnabled
 
         val keysInRowsField = KeyboardBuilder::class.java.getDeclaredField("keysInRows").apply { isAccessible = true }
 

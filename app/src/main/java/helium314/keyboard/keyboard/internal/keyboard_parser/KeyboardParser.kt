@@ -113,6 +113,8 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
             params.baseKeys = baseKeys.flatMap { row -> row.map { it.toKeyParams(params) } }
 
         val allFunctionalKeys = LayoutParser.parseLayout(LayoutType.FUNCTIONAL, params, context)
+        if (element.isAlphabet && params.mId.numberRowEnabled && params.mId.subtype.mainLayoutName == "korean_cheonjiin")
+            allFunctionalKeys.add(0, mutableListOf())
         adjustBottomFunctionalRowAndBaseKeys(allFunctionalKeys, baseKeys)
 
         if (allFunctionalKeys.none { it.singleOrNull()?.isKeyPlaceholder() == true })
