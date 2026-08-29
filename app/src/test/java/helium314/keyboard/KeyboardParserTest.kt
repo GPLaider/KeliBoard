@@ -24,9 +24,12 @@ import helium314.keyboard.keyboard.internal.keyboard_parser.LocaleKeyboardInfos
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.LatinIME
 import helium314.keyboard.latin.RichInputMethodSubtype
+import helium314.keyboard.latin.common.Constants
+import helium314.keyboard.latin.common.LocaleUtils.constructLocale
 import helium314.keyboard.latin.settings.SettingsSubtype
 import helium314.keyboard.latin.utils.LayoutUtilsCustom
 import helium314.keyboard.latin.utils.POPUP_KEYS_LAYOUT
+import helium314.keyboard.latin.utils.SubtypeLocaleUtils
 import helium314.keyboard.latin.utils.SubtypeUtilsAdditional
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -163,6 +166,20 @@ f""", // no newline at the end
         assertEquals('a'.code, codeFor(KeyboardElement.ALPHABET))
         assertEquals('A'.code, codeFor(KeyboardElement.ALPHABET_MANUAL_SHIFTED))
         assertEquals('A'.code, codeFor(KeyboardElement.ALPHABET_SHIFT_LOCKED))
+    }
+
+    @Test fun `no-language layouts keep explicit shift keys despite stale no-shift metadata`() {
+        val subtype = RichInputMethodSubtype.get(SettingsSubtype(
+            SubtypeLocaleUtils.NO_LANGUAGE.constructLocale(), Constants.Subtype.ExtraValue.NO_SHIFT_KEY
+        ).toAdditionalSubtype())
+        val layoutParams = KeyboardLayoutSet.Params().apply {
+            editorInfo = EditorInfo()
+            this.subtype = subtype
+        }
+        params.mId = KeyboardId(KeyboardElement.ALPHABET, layoutParams)
+        val shift = LayoutParser.parseSimpleString("shift").single().single().compute(params)!!.toKeyParams(params)
+
+        assertEquals(KeyCode.SHIFT, shift.mCode)
     }
 
     @Test fun `cheonjiin number row preserves Samsung four-column alignment`() {

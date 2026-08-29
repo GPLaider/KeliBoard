@@ -311,6 +311,7 @@ sealed interface KeyData : AbstractKeyData {
         require(width >= 0f || width == -1f) { "illegal width $width" }
         val newLabel = label.convertFlorisLabel().resolveStringLabel(params)
         if (newLabel == KeyLabel.SHIFT && params.mId.element.isAlphabet
+                && !params.mId.subtype.isNoLanguage
                 && params.mId.subtype.hasExtraValue(Constants.Subtype.ExtraValue.NO_SHIFT_KEY)) {
             return null
         }
