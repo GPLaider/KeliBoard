@@ -237,6 +237,7 @@ class ClipboardHistoryManager(
             if (InputTypeUtils.isNumberInputType(inputType) && !content.isValidNumber()) return null
             KeyboardTypeface.applyToTextView(textView)
             textView.text = (if (isClipSensitive(inputType)) "*".repeat(content.length.coerceAtMost(200)) else content)
+                .take(200) // truncate displayed text for performance reasons
         }
         val onClickListener = View.OnClickListener {
             dontShowCurrentSuggestion = true

@@ -158,12 +158,13 @@ class InputTest {
         }
     }
 
-    @Test fun copiedTextImmediatelyAppearsAndPastesFromSuggestionStrip() {
+    @Test fun largeCopiedTextAppearsAsTruncatedSuggestionAndPastesCompletely() {
         val prefs = latinIME.prefs()
         val historyEnabled = prefs.getBoolean(Settings.PREF_ENABLE_CLIPBOARD_HISTORY, true)
         val clipboard = latinIME.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val root = keyboardSwitcher.stripContainer.rootView
         val suggestions = root.findViewById<ViewGroup>(R.id.suggestions_strip)
+        val copiedText = "바로 붙여넣기".repeat(20_000)
 
         try {
             prefs.edit().putBoolean(Settings.PREF_ENABLE_CLIPBOARD_HISTORY, false).apply()
@@ -172,7 +173,7 @@ class InputTest {
             clipboard.clearPrimaryClip()
             latinIME.setNeutralSuggestionStrip()
 
-            val clip = ClipData.newPlainText("copied text", "바로 붙여넣기")
+            val clip = ClipData.newPlainText("copied text", copiedText)
             clipboard.setPrimaryClip(clip)
             // Robolectric 4.16 stamps clips with uptime, while Android uses wall time.
             ReflectionHelpers.callInstanceMethod<Any?>(
@@ -185,9 +186,9 @@ class InputTest {
 
             assertFalse(Settings.getValues().mClipboardHistoryEnabled)
             val suggestion = suggestions.findViewById<TextView>(R.id.clipboard_suggestion_text)
-            assertEquals("바로 붙여넣기", suggestion?.text?.toString())
+            assertEquals(copiedText.take(200), suggestion?.text?.toString())
             suggestion!!.performClick()
-            assertEquals("바로 붙여넣기", ShadowInputMethodService.text)
+            assertEquals(copiedText, ShadowInputMethodService.text)
         } finally {
             prefs.edit().putBoolean(Settings.PREF_ENABLE_CLIPBOARD_HISTORY, historyEnabled).apply()
         }
