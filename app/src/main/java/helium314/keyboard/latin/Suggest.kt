@@ -168,6 +168,8 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
         firstOccurrenceOfTypedWordInSuggestions: Int,
         typedWordInfo: SuggestedWordInfo?
     ): Pair<Boolean, Boolean> {
+        if (typedWordInfo?.mSourceDict?.mDictType == Dictionary.TYPE_USER) return false to false
+
         val consideredWord = typedWordString.dropLast(trailingSingleQuotesCount)
         val firstAndTypedEmptyInfos by lazy { getEmptyWordSuggestions() }
 

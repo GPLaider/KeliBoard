@@ -275,6 +275,22 @@ class SuggestTest {
         assert(!result.last()) // should not be corrected
     }
 
+    @Test fun `personal dictionary word is not autocorrected`() {
+        val locale = Locale.ENGLISH
+        val result = shouldBeAutoCorrected(
+            "bot",
+            listOf(
+                suggestion("not", 2_000_000, locale),
+                suggestion("bot", 1_500_000, locale, dictionaryType = Dictionary.TYPE_USER),
+            ),
+            suggestion("not", 240, locale),
+            null,
+            locale,
+            confidenceModest,
+        )
+        assertEquals(listOf(false, false), result)
+    }
+
     @Test fun `typed word is first suggestion`() { // first suggestion will not be shown to the user
         tapTypingSuggestions = suggestionResults(listOf(suggestion("hello", 123, currentTypingLocale)))
         val results = getSuggestedWords(false, "henlo", CapsMode.OFF)
@@ -670,7 +686,13 @@ private var tapTypingSuggestions = suggestionResults(emptyList())
 private var glideTypingSuggestions = suggestionResults(emptyList())
 private var nextWordSuggestions = suggestionResults(emptyList())
 
-fun suggestion(word: String, score: Int, locale: Locale = currentTypingLocale, shortcut: Boolean = false) =
+fun suggestion(
+    word: String,
+    score: Int,
+    locale: Locale = currentTypingLocale,
+    shortcut: Boolean = false,
+    dictionaryType: String = Dictionary.TYPE_MAIN,
+) =
     SuggestedWordInfo(
         word,
         "", // irrelevant
@@ -681,7 +703,7 @@ fun suggestion(word: String, score: Int, locale: Locale = currentTypingLocale, s
         if (score == Int.MAX_VALUE) KIND_WHITELIST
             else if (shortcut) KIND_SHORTCUT // whitelist & shortcut only counts a whitelist
             else KIND_FLAG_APPROPRIATE_FOR_AUTO_CORRECTION, // shortcuts seem to never have this flag
-        TestDict(locale),
+        TestDict(locale, dictionaryType),
         0, // irrelevant
         0 // irrelevant?
     )
@@ -709,7 +731,7 @@ class ShadowFacilitator {
     }
 }
 
-private class TestDict(locale: Locale) : Dictionary(TYPE_MAIN, locale) {
+private class TestDict(locale: Locale, dictionaryType: String = TYPE_MAIN) : Dictionary(dictionaryType, locale) {
     override fun getSuggestions(
         composedData: ComposedData?,
         ngramContext: NgramContext?,
