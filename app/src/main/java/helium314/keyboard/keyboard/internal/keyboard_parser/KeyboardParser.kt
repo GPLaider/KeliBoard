@@ -107,7 +107,7 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
         if (element.isAlphaOrSymbol && params.mId.numberRowEnabled) {
             val newLabelFlags = defaultLabelFlags or
                     if (Settings.getValues().mShowNumberRowHints) 0 else Key.LABEL_FLAGS_DISABLE_HINT_LABEL
-            baseKeys.add(0, numberRow.mapTo(mutableListOf()) { it.copy(newLabelFlags = newLabelFlags) })
+            baseKeys.add(0, numberRow.mapTo(mutableListOf()) { it.copy(newLabelFlags = it.labelFlags or newLabelFlags) })
         }
         if (!params.mAllowRedundantPopupKeys)
             params.baseKeys = baseKeys.flatMap { row -> row.map { it.toKeyParams(params) } }

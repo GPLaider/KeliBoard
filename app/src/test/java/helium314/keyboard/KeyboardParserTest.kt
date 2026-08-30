@@ -27,6 +27,7 @@ import helium314.keyboard.latin.RichInputMethodSubtype
 import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.common.LocaleUtils.constructLocale
 import helium314.keyboard.latin.settings.SettingsSubtype
+import helium314.keyboard.latin.utils.LayoutType
 import helium314.keyboard.latin.utils.LayoutUtilsCustom
 import helium314.keyboard.latin.utils.POPUP_KEYS_LAYOUT
 import helium314.keyboard.latin.utils.SubtypeLocaleUtils
@@ -231,6 +232,25 @@ f""", // no newline at the end
 
         val (_, symbolKeys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.SYMBOLS)
         assertTrue(symbolKeys.flatten().none { it.mCode in 0xe000..0xe020 })
+    }
+
+    @Test fun `custom number row preserves label flags`() {
+        val layoutName = "custom.number-row-flags"
+        val layoutFile = LayoutUtilsCustom.getLayoutFile(layoutName, LayoutType.NUMBER_ROW, latinIME)
+        val subtype = SettingsSubtype.fallbackSubtype.withLayout(LayoutType.NUMBER_ROW, layoutName).toAdditionalSubtype()
+        try {
+            layoutFile.writeText("""[[{ "label": "1", "labelFlags": 192 }]]""")
+            LayoutUtilsCustom.onLayoutFileChanged()
+            LayoutParser.clearCache()
+
+            val (_, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET, numberRowEnabled = true)
+            val numberKey = keys.flatten().first { it.mLabel == "1" }
+            assertEquals(Key.LABEL_FLAGS_FOLLOW_KEY_LABEL_RATIO, numberKey.mLabelFlags and 0x1c0)
+        } finally {
+            layoutFile.delete()
+            LayoutUtilsCustom.onLayoutFileChanged()
+            LayoutParser.clearCache()
+        }
     }
 
     @Test fun `korean dubeolsik long press prioritizes double consonants`() {
