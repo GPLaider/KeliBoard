@@ -1221,7 +1221,7 @@ public class LatinIME extends InputMethodService implements
                 touchLeft = xy.component1();
                 touchTop = xy.component2();
                 touchRight = touchLeft + mSettings.getCurrent().mFloatingWidth;
-                touchBottom = touchTop + mSettings.getCurrent().mFloatingHeight + stripHeight + (int)FloatingKeyboardUtils.getFloatingHandleHeight(getResources());
+                touchBottom = touchTop + inputHeight;
             }
             outInsets.touchableInsets = InputMethodService.Insets.TOUCHABLE_INSETS_REGION;
             outInsets.touchableRegion.set(touchLeft, touchTop, touchRight, touchBottom);

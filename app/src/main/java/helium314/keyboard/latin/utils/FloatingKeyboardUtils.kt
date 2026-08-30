@@ -4,11 +4,14 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Resources
 import android.graphics.Rect
+import android.os.Build
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.core.content.edit
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import helium314.keyboard.keyboard.KeyboardSwitcher
@@ -27,6 +30,11 @@ object FloatingKeyboardUtils {
     fun setFloating(view: View?) {
         val lp = view?.layoutParams as? ViewGroup.MarginLayoutParams ?: return
         view.getWindowVisibleDisplayFrame(windowFrame)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            val navBarBottom = ViewCompat.getRootWindowInsets(view)
+                ?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
+            windowFrame.bottom -= navBarBottom
+        }
         extraHeight = getSuggestionStripHeight(view.resources) + getFloatingHandleHeight(view.resources)
         val (x, y) = readPosition(
             view.context,
