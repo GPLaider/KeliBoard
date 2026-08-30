@@ -34,6 +34,7 @@ import helium314.keyboard.latin.settings.SettingsSubtype
 import helium314.keyboard.latin.utils.LayoutType
 import helium314.keyboard.latin.utils.LayoutUtilsCustom
 import helium314.keyboard.latin.utils.SubtypeUtilsAdditional
+import helium314.keyboard.latin.utils.ToolbarMode
 import helium314.keyboard.latin.utils.prefs
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -234,6 +235,33 @@ class InputTest {
             assertEquals(copiedText, ShadowInputMethodService.text)
         } finally {
             prefs.edit().putBoolean(Settings.PREF_ENABLE_CLIPBOARD_HISTORY, historyEnabled).apply()
+        }
+    }
+
+    @Test fun incognitoDoesNotForceExpandKeyWhenToolbarIsNotExpandable() {
+        val prefs = latinIME.prefs()
+        val oldToolbarMode = prefs.getString(Settings.PREF_TOOLBAR_MODE, null)
+        val oldIncognito = prefs.getBoolean(Settings.PREF_ALWAYS_INCOGNITO_MODE, false)
+        try {
+            prefs.edit()
+                .putString(Settings.PREF_TOOLBAR_MODE, ToolbarMode.SUGGESTION_STRIP.name)
+                .putBoolean(Settings.PREF_ALWAYS_INCOGNITO_MODE, true)
+                .commit()
+            latinIME.onStartInputView(EditorInfo(), false)
+            ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+
+            assertTrue(Settings.getValues().mIncognitoModeEnabled)
+            assertEquals(
+                View.GONE,
+                keyboardSwitcher.stripContainer.rootView
+                    .findViewById<View>(R.id.suggestions_strip_toolbar_key).visibility,
+            )
+        } finally {
+            prefs.edit()
+                .putString(Settings.PREF_TOOLBAR_MODE, oldToolbarMode)
+                .putBoolean(Settings.PREF_ALWAYS_INCOGNITO_MODE, oldIncognito)
+                .commit()
+            latinIME.onStartInputView(EditorInfo(), false)
         }
     }
 
