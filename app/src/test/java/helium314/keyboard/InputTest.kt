@@ -23,6 +23,7 @@ import android.widget.TextView
 import helium314.keyboard.event.Event
 import helium314.keyboard.keyboard.KeyboardElement
 import helium314.keyboard.keyboard.KeyboardSwitcher
+import helium314.keyboard.keyboard.internal.keyboard_parser.LayoutParser
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.ClipboardHistoryManager
 import helium314.keyboard.latin.LatinIME
@@ -30,6 +31,8 @@ import helium314.keyboard.latin.R
 import helium314.keyboard.latin.RichInputMethodManager
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.settings.SettingsSubtype
+import helium314.keyboard.latin.utils.LayoutType
+import helium314.keyboard.latin.utils.LayoutUtilsCustom
 import helium314.keyboard.latin.utils.SubtypeUtilsAdditional
 import helium314.keyboard.latin.utils.prefs
 import org.junit.runner.RunWith
@@ -118,6 +121,44 @@ class InputTest {
         touchKey('f'.code, MotionEvent.ACTION_UP)
         assertEquals("f", ShadowInputMethodService.text)
         assertEquals(KeyboardElement.ALPHABET_SHIFT_LOCKED, keyboardSwitcher.keyboard?.mId?.element)
+    }
+
+    @Test fun keyboardStateSelectorDoesNotRepeatChangedAction() {
+        // Windows strips trailing dots from file names, so don't use LayoutUtilsCustom.getLayoutName here.
+        val layoutName = "custom.state-selector"
+        val layoutFile = LayoutUtilsCustom.getLayoutFile(layoutName, LayoutType.FUNCTIONAL, latinIME)
+        val subtype = SettingsSubtype.fallbackSubtype.withLayout(LayoutType.FUNCTIONAL, layoutName).toAdditionalSubtype()
+        val defaultLayout = latinIME.assets.open("layouts/functional/functional_keys.json").bufferedReader().use { it.readText() }
+        val selector = """{ "${'$'}": "keyboard_state_selector",
+              "moreSymbols": { "label": "numpad", "width": 0.15, "type": "function" },
+              "default": { "label": "shift", "width": 0.15 } }"""
+
+        try {
+            layoutFile.writeText(defaultLayout.replace("""{ "label": "shift", "width": 0.15 }""", selector))
+            LayoutUtilsCustom.onLayoutFileChanged()
+            RichInputMethodManager.forceSubtype(subtype)
+            LayoutParser.clearCache()
+            keyboardSwitcher.reloadMainKeyboard()
+
+            touchKey(KeyCode.SYMBOL_ALPHA, MotionEvent.ACTION_DOWN, 1_000L)
+            touchKey(KeyCode.SYMBOL_ALPHA, MotionEvent.ACTION_UP, 1_001L)
+            assertEquals(KeyboardElement.SYMBOLS, keyboardSwitcher.keyboard?.mId?.element)
+
+            val shift = keyboardSwitcher.keyboard!!.getKey(KeyCode.SHIFT)!!
+            val x = shift.x + shift.width / 2
+            val y = shift.y + shift.height / 2
+            touchAt(x, y, MotionEvent.ACTION_DOWN, 2_000L)
+            assertEquals(KeyboardElement.SYMBOLS_SHIFTED, keyboardSwitcher.keyboard?.mId?.element)
+            assertEquals(KeyCode.NUMPAD, keyboardSwitcher.keyboard?.sortedKeys?.firstOrNull { it.isOnKey(x, y) }?.code)
+            touchAt(x, y, MotionEvent.ACTION_UP, 2_001L)
+            assertEquals(KeyboardElement.SYMBOLS_SHIFTED, keyboardSwitcher.keyboard?.mId?.element)
+        } finally {
+            RichInputMethodManager.forceSubtype(SettingsSubtype.fallbackSubtype.toAdditionalSubtype())
+            layoutFile.delete()
+            LayoutUtilsCustom.onLayoutFileChanged()
+            LayoutParser.clearCache()
+            keyboardSwitcher.reloadMainKeyboard()
+        }
     }
 
     @Test fun securePasswordAndLockscreenUseShiftableQwerty() {
@@ -304,6 +345,10 @@ class InputTest {
         val key = kb.getKey(code)!!
         val x = key.x + key.height / 2
         val y = key.y + key.width / 2
+        touchAt(x, y, action, eventTime)
+    }
+
+    private fun touchAt(x: Int, y: Int, action: Int, eventTime: Long) {
         val me = MotionEvent.obtain( // todo: there are many more parameters, also related to pointers
             0L,
             eventTime,

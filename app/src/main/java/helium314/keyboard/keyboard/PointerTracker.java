@@ -364,6 +364,16 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         }
     }
 
+    private boolean cancelIfLayoutChangeChangedKey(final Key pressedKey, final Key key,
+            final boolean withSliding) {
+        if (key != null && key.getCode() == pressedKey.getCode()) {
+            return false;
+        }
+        callListenerOnRelease(pressedKey, pressedKey.getCode(), withSliding);
+        cancelTrackingForAction();
+        return true;
+    }
+
     private void callListenerOnFinishSlidingInput() {
         if (DEBUG_LISTENER) {
             Log.d(TAG, String.format(Locale.US, "[%d] onFinishSlidingInput", mPointerId));
@@ -726,11 +736,15 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
             // {@link #setKeyboard}. In those cases, we should update key according to the new
             // keyboard layout.
             // Also height difference between keyboards needs to be considered.
+            final Key pressedKey = key;
             if (callListenerOnPressAndCheckKeyboardLayoutChange(key, 0)) {
                 final int yOffset = keyboardChangeOccupiedHeightDifference;
                 keyboardChangeOccupiedHeightDifference = 0;
                 CoordinateUtils.set(mDownCoordinates, x, y + yOffset);
                 key = onDownKey(x, y + yOffset, eventTime);
+                if (cancelIfLayoutChangeChangedKey(pressedKey, key, false)) {
+                    return;
+                }
             }
 
             startRepeatKey(key);
@@ -843,10 +857,14 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         // at {@link #setKeyboard}. In those cases, we should update key according
         // to the new keyboard layout.
         Key key = newKey;
-        if (callListenerOnPressAndCheckKeyboardLayoutChange(key, 0)) {
+        final boolean layoutChanged = callListenerOnPressAndCheckKeyboardLayoutChange(key, 0);
+        if (layoutChanged) {
             key = onMoveKey(x, y);
         }
         onMoveToNewKey(key, x, y);
+        if (layoutChanged && cancelIfLayoutChangeChangedKey(newKey, key, true)) {
+            return;
+        }
         if (mIsTrackingForActionDisabled) {
             return;
         }
