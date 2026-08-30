@@ -310,6 +310,26 @@ f""", // no newline at the end
         assertTrue("‰" in qPopups)
     }
 
+    @Test fun `turkish secondary locale keeps dotted capital i`() {
+        val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(
+            Locale.ENGLISH, "qwerty", true
+        )
+        val secondaryLocales = listOf(Locale.forLanguageTag("tr"))
+        val (_, keys) = buildKeyboard(
+            EditorInfo(), subtype, KeyboardElement.ALPHABET_MANUAL_SHIFTED,
+            secondaryLocales = secondaryLocales,
+        )
+        val iKey = keys.flatten().first { it.mLabel == "I" }
+
+        assertTrue(iKey.mPopupKeys.orEmpty().any { it.mLabel == "İ" })
+
+        val (_, lowerKeys) = buildKeyboard(
+            EditorInfo(), subtype, KeyboardElement.ALPHABET, secondaryLocales = secondaryLocales,
+        )
+        assertTrue(lowerKeys.flatten().first { it.mLabel == "i" }
+            .mPopupKeys.orEmpty().none { it.mLabel == "İ" })
+    }
+
     @Test fun `korean dubeolsik long press prioritizes double consonants`() {
         val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(
             Locale.KOREAN, "korean", false
@@ -820,6 +840,7 @@ f""", // no newline at the end
         subtype: InputMethodSubtype,
         element: KeyboardElement,
         numberRowEnabled: Boolean = false,
+        secondaryLocales: List<Locale>? = null,
     ): Pair<Keyboard, List<List<KeyParams>>> {
         val layoutParams = KeyboardLayoutSet.Params()
         val editorInfoField = KeyboardLayoutSet.Params::class.java.getDeclaredField("editorInfo").apply { isAccessible = true }
@@ -835,7 +856,12 @@ f""", // no newline at the end
         val keysInRowsField = KeyboardBuilder::class.java.getDeclaredField("keysInRows").apply { isAccessible = true }
 
         val id = KeyboardId(element, layoutParams)
-        val builder = KeyboardBuilder(latinIME, KeyboardParams(UniqueKeysCache.NO_CACHE))
+        val keyboardParams = KeyboardParams(UniqueKeysCache.NO_CACHE)
+        secondaryLocales?.let {
+            KeyboardParams::class.java.getDeclaredField("mSecondaryLocales").apply { isAccessible = true }
+                .set(keyboardParams, it)
+        }
+        val builder = KeyboardBuilder(latinIME, keyboardParams)
         builder.load(id)
         @Suppress("UNCHECKED_CAST")
         return builder.build() to keysInRowsField.get(builder) as ArrayList<ArrayList<KeyParams>>

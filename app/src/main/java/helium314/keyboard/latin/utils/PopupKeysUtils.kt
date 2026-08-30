@@ -34,7 +34,10 @@ fun createPopupKeysArray(popupSet: PopupSet<*>?, params: KeyboardParams, label: 
             POPUP_KEYS_LAYOUT -> popupSet?.getPopupKeyLabels(params)?.let { popupKeys.addAll(it) }
             POPUP_KEYS_SYMBOLS -> popupSet?.symbol?.let { popupKeys.addAll(it) }
             POPUP_KEYS_LANGUAGE -> params.mLocaleKeyboardInfos.getPopupKeys(label)?.let { popupKeys.addAll(it) }
-            POPUP_KEYS_LANGUAGE_PRIORITY -> params.mLocaleKeyboardInfos.getPriorityPopupKeys(label)?.let { popupKeys.addAll(it) }
+            POPUP_KEYS_LANGUAGE_PRIORITY -> {
+                popupKeys.addAll(getSecondaryLocaleUppercaseLabels(params, label))
+                params.mLocaleKeyboardInfos.getPriorityPopupKeys(label)?.let { popupKeys.addAll(it) }
+            }
         }
     }
     if (!popupKeysDelegate.isInitialized() || popupKeys.isEmpty())
@@ -86,11 +89,20 @@ private fun getHintText(popupSet: PopupSet<*>?, params: KeyboardParams, label: S
             POPUP_KEYS_LAYOUT -> popupSet?.getPopupKeyLabels(params)?.let { hintLabel = it.firstOrNull() }
             POPUP_KEYS_SYMBOLS -> popupSet?.symbol?.let { hintLabel = it.firstOrNull() }
             POPUP_KEYS_LANGUAGE -> params.mLocaleKeyboardInfos.getPopupKeys(label)?.let { hintLabel = it.firstOrNull() }
-            POPUP_KEYS_LANGUAGE_PRIORITY -> params.mLocaleKeyboardInfos.getPriorityPopupKeys(label)?.let { hintLabel = it.firstOrNull() }
+            POPUP_KEYS_LANGUAGE_PRIORITY -> {
+                hintLabel = getSecondaryLocaleUppercaseLabels(params, label).firstOrNull()
+                    ?: params.mLocaleKeyboardInfos.getPriorityPopupKeys(label)?.firstOrNull()
+            }
         }
         if (hintLabel != null) return hintLabel
     }
     return null
+}
+
+private fun getSecondaryLocaleUppercaseLabels(params: KeyboardParams, label: String): List<String> {
+    if (!params.mId.element.isAlphabetShifted || label.codePointCount(0, label.length) != 1) return emptyList()
+    val primaryUppercase = label.uppercase(params.mId.locale)
+    return params.mSecondaryLocales.map { label.uppercase(it) }.distinct().filter { it != primaryUppercase }
 }
 
 private fun transformLabel(label: String, params: KeyboardParams): String =
