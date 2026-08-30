@@ -91,6 +91,17 @@ class InputLogicTest {
         assertEquals("", composingText)
     }
 
+    @Test fun `shortcut starting with digits replaces the whole shortcut`() {
+        chainInput("12")
+        assertEquals("", composer.typedWord)
+
+        input('e')
+        assertEquals("12e", composer.typedWord)
+
+        pickSuggestion("example")
+        assertEquals("example", text)
+    }
+
     @Test fun delete() {
         setText("hello there ")
         functionalKeyPress(KeyCode.DELETE)

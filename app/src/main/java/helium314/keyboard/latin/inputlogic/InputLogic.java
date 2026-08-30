@@ -1085,6 +1085,26 @@ public final class InputLogic {
             resetEntireInputState(mConnection.getExpectedSelectionStart(), mConnection.getExpectedSelectionEnd(), true);
             isComposingWord = false;
         }
+        // Pull a leading digit run into composition once a word character follows. This lets
+        // number-prefixed shortcuts match without composing standalone numbers.
+        if (!isComposingWord && settingsValues.isWordCodePoint(codePoint)
+                && !settingsValues.isWordConnector(codePoint)
+                && settingsValues.needsToLookupSuggestions()
+                && Character.isDigit(mConnection.getCodePointBeforeCursor())) {
+            final CharSequence text = mConnection.textBeforeCursorUntilLastWhitespaceOrDoubleSlash();
+            int firstDigit = text.length();
+            while (firstDigit > 0) {
+                final int previousCodePoint = Character.codePointBefore(text, firstDigit);
+                if (!Character.isDigit(previousCodePoint)) break;
+                firstDigit -= Character.charCount(previousCodePoint);
+            }
+            if (firstDigit < text.length() && (firstDigit == 0
+                    || settingsValues.isWordSeparator(Character.codePointBefore(text, firstDigit)))) {
+                final CharSequence digits = text.subSequence(firstDigit, text.length());
+                restartSuggestions(new TextRange(digits, 0, digits.length(), digits.length(), false));
+                isComposingWord = true;
+            }
+        }
         // We want to find out whether to start composing a new word with this character. If so,
         // we need to reset the composing state and switch isComposingWord. The order of the
         // tests is important for good performance.
