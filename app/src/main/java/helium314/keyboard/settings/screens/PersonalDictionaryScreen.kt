@@ -105,7 +105,7 @@ private fun EditWordDialog(word: Word, locale: Locale?, onDismissRequest: () -> 
     val wordValid = (newWord.word == word.word && locale == newLocale) || !doesWordExist(newWord.word, newLocale, ctx)
     fun save() {
         if (newWord != word || locale != newLocale) {
-            deleteWord(word, locale, ctx.contentResolver)
+            deleteWord(word, ctx.contentResolver)
             val saveWeight = newWord.weight ?: WEIGHT_FOR_USER_DICTIONARY_ADDS
             UserDictionary.Words.addWord(ctx, newWord.word, saveWeight, newWord.shortcut, newLocale)
         }
@@ -117,7 +117,7 @@ private fun EditWordDialog(word: Word, locale: Locale?, onDismissRequest: () -> 
         confirmButtonText = stringResource(R.string.save),
         neutralButtonText = stringResource(R.string.delete),
         onNeutral = {
-            deleteWord(word, locale, ctx.contentResolver) // delete the originally selected word
+            deleteWord(word, ctx.contentResolver) // delete the originally selected word
             onDismissRequest()
         },
         title = {
@@ -195,34 +195,9 @@ private fun EditWordDialog(word: Word, locale: Locale?, onDismissRequest: () -> 
     )
 }
 
-private fun deleteWord(wordDetails: Word, locale: Locale?, resolver: ContentResolver) {
-    val (word, shortcut, weightInt) = wordDetails
-    val weight = weightInt.toString()
-    if (shortcut.isNullOrBlank()) {
-        if (locale == null) {
-            resolver.delete(
-                UserDictionary.Words.CONTENT_URI, DELETE_SELECTION_WITHOUT_SHORTCUT_AND_WITH_ALL_LOCALES,
-                arrayOf(word, weight)
-            )
-        } else {
-            resolver.delete( // requires use of locale string for interaction with Android system
-                UserDictionary.Words.CONTENT_URI, DELETE_SELECTION_WITHOUT_SHORTCUT_AND_WITH_LOCALE,
-                arrayOf(word, weight, locale.toString())
-            )
-        }
-    } else {
-        if (locale == null) {
-            resolver.delete(
-                UserDictionary.Words.CONTENT_URI, DELETE_SELECTION_WITH_SHORTCUT_AND_WITH_ALL_LOCALES,
-                arrayOf(word, shortcut, weight)
-            )
-        } else {
-            resolver.delete( // requires use of locale string for interaction with Android system
-                UserDictionary.Words.CONTENT_URI, DELETE_SELECTION_WITH_SHORTCUT_AND_WITH_LOCALE,
-                arrayOf(word, shortcut, weight, locale.toString())
-            )
-        }
-    }
+internal fun deleteWord(wordDetails: Word, resolver: ContentResolver) {
+    val id = wordDetails.id ?: return
+    resolver.delete(UserDictionary.Words.CONTENT_URI, "${UserDictionary.Words._ID}=?", arrayOf(id.toString()))
 }
 
 private fun doesWordExist(word: String, locale: Locale?, context: Context): Boolean {
@@ -259,7 +234,7 @@ fun Locale?.getLocaleDisplayNameForUserDictSettings(context: Context) =
     this?.localizedDisplayName(context.resources) ?: context.resources.getString(R.string.user_dict_settings_all_languages)
 
 // weight is frequency but different name towards user
-private data class Word(val word: String, val shortcut: String?, val weight: Int?)
+internal data class Word(val word: String, val shortcut: String?, val weight: Int?, val id: Long? = null)
 
 // getting all words instead of reading directly cursor, because filteredItems expects a list
 private fun getAll(locale: Locale?, context: Context): List<Word> {
@@ -270,8 +245,9 @@ private fun getAll(locale: Locale?, context: Context): List<Word> {
     val wordIndex = cursor.getColumnIndexOrThrow(UserDictionary.Words.WORD)
     val shortcutIndex = cursor.getColumnIndexOrThrow(UserDictionary.Words.SHORTCUT)
     val frequencyIndex = cursor.getColumnIndexOrThrow(UserDictionary.Words.FREQUENCY)
+    val idIndex = cursor.getColumnIndexOrThrow(UserDictionary.Words._ID)
     while (!cursor.isAfterLast) {
-        result.add(Word(cursor.getString(wordIndex), cursor.getString(shortcutIndex), cursor.getInt(frequencyIndex)))
+        result.add(Word(cursor.getString(wordIndex), cursor.getString(shortcutIndex), cursor.getInt(frequencyIndex), cursor.getLong(idIndex)))
         cursor.moveToNext()
     }
     cursor.close()
@@ -312,33 +288,5 @@ private const val SORT_ORDER = "UPPER(" + UserDictionary.Words.WORD + ")"
 // or the word equals our current locale
 private const val QUERY_SELECTION = UserDictionary.Words.LOCALE + "=?"
 private const val QUERY_SELECTION_ALL_LOCALES = UserDictionary.Words.LOCALE + " is null"
-
-private const val DELETE_SELECTION_WITH_SHORTCUT_AND_WITH_LOCALE = (UserDictionary.Words.WORD + "=? AND "
-        + UserDictionary.Words.SHORTCUT + "=? AND "
-        + UserDictionary.Words.FREQUENCY + "=? AND "
-        + UserDictionary.Words.LOCALE + "=?")
-
-private const val DELETE_SELECTION_WITH_SHORTCUT_AND_WITH_ALL_LOCALES = (UserDictionary.Words.WORD + "=? AND "
-        + UserDictionary.Words.SHORTCUT + "=? AND "
-        + UserDictionary.Words.FREQUENCY + "=? AND "
-        + UserDictionary.Words.LOCALE + " is null")
-
-private const val DELETE_SELECTION_WITHOUT_SHORTCUT_AND_WITH_LOCALE = (UserDictionary.Words.WORD + "=? AND "
-        + UserDictionary.Words.SHORTCUT + " is null AND "
-        + UserDictionary.Words.FREQUENCY + "=? AND "
-        + UserDictionary.Words.LOCALE + "=? OR "
-
-        + UserDictionary.Words.SHORTCUT + "='' AND "
-        + UserDictionary.Words.FREQUENCY + "=? AND "
-        + UserDictionary.Words.LOCALE + "=?")
-
-private const val DELETE_SELECTION_WITHOUT_SHORTCUT_AND_WITH_ALL_LOCALES = (UserDictionary.Words.WORD + "=? AND "
-        + UserDictionary.Words.SHORTCUT + " is null AND "
-        + UserDictionary.Words.FREQUENCY + "=? AND "
-        + UserDictionary.Words.LOCALE + " is null OR "
-
-        + UserDictionary.Words.SHORTCUT + "='' AND "
-        + UserDictionary.Words.FREQUENCY + "=? AND "
-        + UserDictionary.Words.LOCALE + " is null")
 
 private const val WEIGHT_FOR_USER_DICTIONARY_ADDS = 250
