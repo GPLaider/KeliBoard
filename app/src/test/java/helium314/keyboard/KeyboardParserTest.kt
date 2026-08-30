@@ -301,6 +301,15 @@ f""", // no newline at the end
         }
     }
 
+    @Test fun `secondary layout includes each key popup`() {
+        val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(Locale.ENGLISH, "qwerty", true)
+        val (_, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET)
+        val qPopups = keys.flatten().first { it.mLabel == "q" }.mPopupKeys?.mapNotNull { it.mLabel }.orEmpty()
+
+        assertTrue("%" in qPopups)
+        assertTrue("‰" in qPopups)
+    }
+
     @Test fun `korean dubeolsik long press prioritizes double consonants`() {
         val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(
             Locale.KOREAN, "korean", false

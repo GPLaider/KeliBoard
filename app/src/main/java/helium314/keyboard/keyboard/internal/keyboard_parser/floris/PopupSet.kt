@@ -37,7 +37,7 @@ open class PopupSet<T : AbstractKeyData>(
 
     // todo: this is mutable... bad idea because we cache instances of this over multiple keyboards (see LayoutParser where this is cleaned up...)
     var numberLabel: String? = null
-    var symbol: String? = null // maybe list of keys?
+    var symbol: Collection<String>? = null
 
     fun <U : AbstractKeyData> merge(other: PopupSet<U>?): PopupSet<out AbstractKeyData> {
         if (other == null || other.isEmpty()) return this

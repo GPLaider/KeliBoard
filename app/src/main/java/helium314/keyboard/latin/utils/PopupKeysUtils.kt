@@ -32,7 +32,7 @@ fun createPopupKeysArray(popupSet: PopupSet<*>?, params: KeyboardParams, label: 
         when (type) {
             POPUP_KEYS_NUMBER -> popupSet?.numberLabel?.let { popupKeys.add(it) }
             POPUP_KEYS_LAYOUT -> popupSet?.getPopupKeyLabels(params)?.let { popupKeys.addAll(it) }
-            POPUP_KEYS_SYMBOLS -> popupSet?.symbol?.let { popupKeys.add(it) }
+            POPUP_KEYS_SYMBOLS -> popupSet?.symbol?.let { popupKeys.addAll(it) }
             POPUP_KEYS_LANGUAGE -> params.mLocaleKeyboardInfos.getPopupKeys(label)?.let { popupKeys.addAll(it) }
             POPUP_KEYS_LANGUAGE_PRIORITY -> params.mLocaleKeyboardInfos.getPriorityPopupKeys(label)?.let { popupKeys.addAll(it) }
         }
@@ -84,7 +84,7 @@ private fun getHintText(popupSet: PopupSet<*>?, params: KeyboardParams, label: S
         when (type) {
             POPUP_KEYS_NUMBER -> popupSet?.numberLabel?.let { hintLabel = it }
             POPUP_KEYS_LAYOUT -> popupSet?.getPopupKeyLabels(params)?.let { hintLabel = it.firstOrNull() }
-            POPUP_KEYS_SYMBOLS -> popupSet?.symbol?.let { hintLabel = it }
+            POPUP_KEYS_SYMBOLS -> popupSet?.symbol?.let { hintLabel = it.firstOrNull() }
             POPUP_KEYS_LANGUAGE -> params.mLocaleKeyboardInfos.getPopupKeys(label)?.let { hintLabel = it.firstOrNull() }
             POPUP_KEYS_LANGUAGE_PRIORITY -> params.mLocaleKeyboardInfos.getPriorityPopupKeys(label)?.let { hintLabel = it.firstOrNull() }
         }
