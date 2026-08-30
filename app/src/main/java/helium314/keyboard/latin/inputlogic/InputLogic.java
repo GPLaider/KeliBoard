@@ -910,6 +910,10 @@ public final class InputLogic {
                     : event.getCodePoint() >= 0
                         ? KeyCode.codePointToKeyEventCode(event.getCodePoint())
                         : KeyCode.keyCodeToKeyEventCode(keyCode);
+                if (keyEventCode == KeyEvent.KEYCODE_V && (event.getMetaState() & KeyEvent.META_CTRL_MASK) != 0) {
+                    paste(mLatinIME.getCurrentInputEditorInfo().packageName);
+                    return;
+                }
                 if (keyEventCode != KeyEvent.KEYCODE_UNKNOWN) {
                     sendDownUpKeyEventWithMetaState(keyEventCode, event.getMetaState());
                     return;

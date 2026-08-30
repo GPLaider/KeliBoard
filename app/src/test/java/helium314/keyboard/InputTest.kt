@@ -13,12 +13,14 @@ import android.database.MatrixCursor
 import android.net.Uri
 import android.provider.MediaStore
 import android.text.InputType
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.ImageView
 import android.widget.TextView
+import helium314.keyboard.event.Event
 import helium314.keyboard.keyboard.KeyboardElement
 import helium314.keyboard.keyboard.KeyboardSwitcher
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
@@ -194,13 +196,19 @@ class InputTest {
         }
     }
 
-    @Test fun pasteKeyCommitsPlainTextClipboard() {
+    @Test fun pasteKeyAndCtrlVCommitPlainTextClipboard() {
         val clipboard = latinIME.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("copied text", "붙여넣기 테스트"))
         try {
             latinIME.mKeyboardActionListener.onCodeInput(
                 KeyCode.CLIPBOARD_PASTE, 0, 0, false
             )
+            assertEquals("붙여넣기 테스트", ShadowInputMethodService.text)
+
+            ShadowInputMethodService.reset()
+            latinIME.onEvent(Event.createSoftwareKeypressEvent(
+                'v'.code, Event.NOT_A_KEY_CODE, KeyEvent.META_CTRL_ON, 0, 0, false
+            ))
             assertEquals("붙여넣기 테스트", ShadowInputMethodService.text)
         } finally {
             clipboard.clearPrimaryClip()
