@@ -749,6 +749,17 @@ class InputLogicTest {
         assertEquals(false, InputLogic.isStartOfInlineEmojiSearch('t'.code, ':'.code, '3'.code, settingsValues))
     }
 
+    @Test fun gestureTypingKeepsManualShift() {
+        setText("hello")
+        val keyboardSwitcher = Mockito.mock(KeyboardSwitcher::class.java)
+        Mockito.`when`(keyboardSwitcher.keyboardCapsMode).thenReturn(CapsMode.MANUAL)
+
+        inputLogic.onStartBatchInput(settingsValues, keyboardSwitcher, latinIME.mHandler)
+
+        Mockito.verify(keyboardSwitcher, Mockito.never())
+            .requestUpdatingShiftState(Mockito.anyInt(), Mockito.any())
+    }
+
     @Test fun inlineEmojiSearchString() {
         assertEquals("test", InputLogic.getInlineEmojiSearchString(":test"))
         assertEquals(null, InputLogic.getInlineEmojiSearchString("test"))

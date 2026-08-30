@@ -600,13 +600,10 @@ public final class InputLogic {
         final int codePointBeforeCursor = mConnection.getCodePointBeforeCursor();
         if (Character.isLetterOrDigit(codePointBeforeCursor)
                 || settingsValues.isUsuallyFollowedBySpace(codePointBeforeCursor)) {
-            // autoShiftHasBeenOverridden is weird
-            // before switching CapsMode to enum, it was CapsMode != autoCapsState
-            // autoCapsState is 0 (off), 0x1000, 0x2000, 0x4000 or a combination
-            // old CapsMode was 0 (off), 1, 3, 5, 7
-            // meaning both were incompatible, and the check was just returning whether both were 0
-            // todo: maybe adjust this?
-            boolean autoShiftHasBeenOverridden = keyboardSwitcher.getKeyboardCapsMode() == CapsMode.OFF && getCurrentAutoCapsState(settingsValues) != 0;
+            CapsMode keyboardCapsMode = keyboardSwitcher.getKeyboardCapsMode();
+            boolean autoShiftHasBeenOverridden = keyboardCapsMode == CapsMode.MANUAL
+                    || keyboardCapsMode == CapsMode.MANUAL_LOCKED
+                    || (keyboardCapsMode == CapsMode.OFF && getCurrentAutoCapsState(settingsValues) != 0);
             if (settingsValues.mAutospaceBeforeGestureTyping)
                 mSpaceState = SpaceState.PHANTOM; // influences autoCapsState
             if (!autoShiftHasBeenOverridden) {
