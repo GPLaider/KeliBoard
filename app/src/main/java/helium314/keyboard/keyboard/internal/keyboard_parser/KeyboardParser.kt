@@ -297,7 +297,7 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
     private fun addSymbolPopupKeys(baseKeys: MutableList<MutableList<KeyData>>) {
         val layout = LayoutParser.parseLayout(LayoutType.SYMBOLS, params, context)
         layout.forEachIndexed { i, row ->
-            val baseRow = baseKeys.getOrNull(i) ?: return@forEachIndexed
+            val baseRow = baseKeys.getOrNull(i + baseKeys.size - layout.size) ?: return@forEachIndexed
             row.forEachIndexed { j, key ->
                 baseRow.getOrNull(j)?.popup?.symbol = key.label
             }

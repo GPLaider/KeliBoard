@@ -253,6 +253,26 @@ f""", // no newline at the end
         }
     }
 
+    @Test fun `symbol popups stay on bottom three rows`() {
+        val layoutName = "custom.Latn.four-rows"
+        val layoutFile = LayoutUtilsCustom.getLayoutFile(layoutName, LayoutType.MAIN, latinIME)
+        val subtype = SettingsSubtype.fallbackSubtype.withLayout(LayoutType.MAIN, layoutName).toAdditionalSubtype()
+        try {
+            layoutFile.writeText("""[[{"label":"1"}],[{"label":"q"}],[{"label":"a"}],[{"label":"z"}]]""")
+            LayoutUtilsCustom.onLayoutFileChanged()
+            LayoutParser.clearCache()
+
+            val (_, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET)
+            val popupsByLabel = keys.flatten().associate { it.mLabel to it.mPopupKeys?.mapNotNull { popup -> popup.mLabel } }
+            assertTrue(popupsByLabel.getValue("a")!!.contains("@"))
+            assertTrue(popupsByLabel.getValue("z")!!.contains("*"))
+        } finally {
+            layoutFile.delete()
+            LayoutUtilsCustom.onLayoutFileChanged()
+            LayoutParser.clearCache()
+        }
+    }
+
     @Test fun `korean dubeolsik long press prioritizes double consonants`() {
         val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(
             Locale.KOREAN, "korean", false
