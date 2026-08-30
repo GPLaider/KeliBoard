@@ -18,8 +18,10 @@ import helium314.keyboard.latin.common.isEmoji
 import helium314.keyboard.latin.define.DebugFlags
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.LayoutType
+import helium314.keyboard.latin.utils.LayoutUtilsCustom
 import helium314.keyboard.latin.utils.POPUP_KEYS_LAYOUT
 import helium314.keyboard.latin.utils.POPUP_KEYS_NUMBER
+import helium314.keyboard.latin.utils.prefs
 import helium314.keyboard.latin.utils.replaceFirst
 import helium314.keyboard.latin.utils.splitAt
 import helium314.keyboard.latin.utils.sumOf
@@ -305,6 +307,8 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
     }
 
     private fun getNumberRow(): MutableList<KeyData> {
+        val layoutName = params.mId.subtype.layouts[LayoutType.NUMBER_ROW]
+            ?: Settings.readDefaultLayoutName(LayoutType.NUMBER_ROW, context.prefs())
         val row = LayoutParser.parseLayout(LayoutType.NUMBER_ROW, params, context).first()
         val localizedNumbers = params.mLocaleKeyboardInfos.localizedNumberKeys
         if (localizedNumbers?.size != 10) return row
@@ -318,7 +322,7 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
                     in 1..9 -> row[i] = key.copy(newLabel = localizedNumbers[number - 1], newCode = KeyCode.UNSPECIFIED, newPopup = SimplePopups(listOf(key.label)).merge(key.popup))
                 }
             }
-        } else {
+        } else if (!LayoutUtilsCustom.isCustomLayout(layoutName)) {
             // add localized numbers to popups on 0-9
             for (i in row.indices) {
                 val key = row[i]

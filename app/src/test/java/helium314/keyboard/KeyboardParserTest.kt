@@ -26,12 +26,14 @@ import helium314.keyboard.latin.LatinIME
 import helium314.keyboard.latin.RichInputMethodSubtype
 import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.common.LocaleUtils.constructLocale
+import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.settings.SettingsSubtype
 import helium314.keyboard.latin.utils.LayoutType
 import helium314.keyboard.latin.utils.LayoutUtilsCustom
 import helium314.keyboard.latin.utils.POPUP_KEYS_LAYOUT
 import helium314.keyboard.latin.utils.SubtypeLocaleUtils
 import helium314.keyboard.latin.utils.SubtypeUtilsAdditional
+import helium314.keyboard.latin.utils.prefs
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
@@ -247,6 +249,32 @@ f""", // no newline at the end
             val numberKey = keys.flatten().first { it.mLabel == "1" }
             assertEquals(Key.LABEL_FLAGS_FOLLOW_KEY_LABEL_RATIO, numberKey.mLabelFlags and 0x1c0)
         } finally {
+            layoutFile.delete()
+            LayoutUtilsCustom.onLayoutFileChanged()
+            LayoutParser.clearCache()
+        }
+    }
+
+    @Test fun `custom number row is not augmented with localized digits when localization is off`() {
+        val layoutName = "custom.number-row-popups"
+        val layoutFile = LayoutUtilsCustom.getLayoutFile(layoutName, LayoutType.NUMBER_ROW, latinIME)
+        val subtype = SettingsSubtype(Locale.forLanguageTag("ar"), "")
+            .withLayout(LayoutType.MAIN, "arabic")
+            .withLayout(LayoutType.NUMBER_ROW, layoutName)
+            .toAdditionalSubtype()
+        val prefs = latinIME.prefs()
+        val localizedNumbers = prefs.getBoolean(Settings.PREF_LOCALIZED_NUMBER_ROW, true)
+        try {
+            prefs.edit().putBoolean(Settings.PREF_LOCALIZED_NUMBER_ROW, false).commit()
+            layoutFile.writeText("""[[{"label":"1","popup":{"relevant":[{"label":"x"}]}}]]""")
+            LayoutUtilsCustom.onLayoutFileChanged()
+            LayoutParser.clearCache()
+
+            val (_, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET, numberRowEnabled = true)
+            val numberKey = keys.flatten().first { it.mLabel == "1" }
+            assertEquals(listOf("x"), numberKey.mPopupKeys?.mapNotNull { it.mLabel })
+        } finally {
+            prefs.edit().putBoolean(Settings.PREF_LOCALIZED_NUMBER_ROW, localizedNumbers).commit()
             layoutFile.delete()
             LayoutUtilsCustom.onLayoutFileChanged()
             LayoutParser.clearCache()
