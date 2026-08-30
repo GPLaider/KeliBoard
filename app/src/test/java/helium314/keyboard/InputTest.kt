@@ -194,6 +194,19 @@ class InputTest {
         }
     }
 
+    @Test fun pasteKeyCommitsPlainTextClipboard() {
+        val clipboard = latinIME.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("copied text", "붙여넣기 테스트"))
+        try {
+            latinIME.mKeyboardActionListener.onCodeInput(
+                KeyCode.CLIPBOARD_PASTE, 0, 0, false
+            )
+            assertEquals("붙여넣기 테스트", ShadowInputMethodService.text)
+        } finally {
+            clipboard.clearPrimaryClip()
+        }
+    }
+
     @Test fun recentScreenshotDetectionRejectsPrivateAndUnrelatedMedia() {
         assertTrue(ClipboardHistoryManager.isScreenshot("Screenshot_20260829.png", null, null))
         assertTrue(ClipboardHistoryManager.isScreenshot("image.png", "Pictures/Screenshots/", null))

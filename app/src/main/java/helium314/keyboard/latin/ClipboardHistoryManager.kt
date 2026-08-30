@@ -87,6 +87,13 @@ class ClipboardHistoryManager(
         mainHandler.removeCallbacks(refreshScreenshotSuggestion)
     }
 
+    fun getPrimaryClipIfText(): String? {
+        if (tempPrimaryClip) return null
+        val clipData = clipboardManager.primaryClip ?: return null
+        if (clipData.itemCount == 0 || clipData.description?.hasMimeType("text/*") != true) return null
+        return clipData.getItemAt(0)?.coerceToText(latinIME)?.toString()?.takeIf { it.isNotEmpty() }
+    }
+
     fun onInputViewHidden() {
         setScreenshotObserverEnabled(false)
     }

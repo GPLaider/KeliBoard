@@ -9,6 +9,7 @@ package helium314.keyboard.latin.inputlogic;
 import static helium314.keyboard.latin.common.SuggestionSpanUtilsKt.getTextWithSuggestionSpan;
 
 import android.graphics.Color;
+import android.os.Build;
 import android.os.SystemClock;
 import android.text.InputType;
 import android.text.SpannableString;
@@ -24,6 +25,7 @@ import android.view.inputmethod.EditorInfo;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import helium314.keyboard.compat.AppWorkarounds;
 import helium314.keyboard.event.Event;
 import helium314.keyboard.event.InputTransaction;
 import helium314.keyboard.keyboard.Keyboard;
@@ -2690,12 +2692,15 @@ public final class InputLogic {
     }
 
     private void paste(String packageName) {
-        sendDownUpKeyEventWithMetaState(KeyEvent.KEYCODE_V, KeyEvent.META_CTRL_ON);
-        // looks like there are more apps that don't care about KeyEvent.KEYCODE_PASTE but work with CTRL+V
-        // so let's try using CRTL+V and hope there are no apps that require different things
-//        if (AppWorkarounds.INSTANCE.doesntCareAboutKeycodePaste(packageName) || Build.VERSION.SDK_INT < Build.VERSION_CODES.N)
-//            sendDownUpKeyEventWithMetaState(KeyEvent.KEYCODE_V, KeyEvent.META_CTRL_ON);
-//        else sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);
+        String primaryClip = mLatinIME.getClipboardHistoryManager().getPrimaryClipIfText();
+        if (primaryClip != null) {
+            mConnection.commitText(primaryClip, 1);
+        } else if (AppWorkarounds.INSTANCE.doesntCareAboutKeycodePaste(packageName)
+                || Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            sendDownUpKeyEventWithMetaState(KeyEvent.KEYCODE_V, KeyEvent.META_CTRL_ON);
+        } else {
+            sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);
+        }
     }
 
     private void enterInlineEmojiSearchIfNeeded(int codePoint, SettingsValues settingsValues) {
