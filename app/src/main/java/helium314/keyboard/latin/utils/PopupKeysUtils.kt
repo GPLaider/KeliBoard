@@ -61,6 +61,9 @@ fun createPopupKeysArray(popupSet: PopupSet<*>?, params: KeyboardParams, label: 
     return array
 }
 
+fun getPopupKeyLabelFlags(popupSet: PopupSet<*>?, params: KeyboardParams): Map<String, Int> =
+    popupSet?.getPopupKeyLabelFlags(params)?.mapKeys { transformLabel(it.key, params) }.orEmpty()
+
 fun getHintLabel(popupSet: PopupSet<*>?, params: KeyboardParams, label: String): String? {
     val hintLabel = getHintText(popupSet, params, label) ?: return null
     if (hintLabel in toolbarKeyStrings.values || hintLabel.isEmpty())

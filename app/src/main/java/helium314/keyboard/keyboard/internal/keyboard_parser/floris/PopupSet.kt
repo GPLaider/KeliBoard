@@ -25,6 +25,14 @@ open class PopupSet<T : AbstractKeyData>(
         if (popupKeys.isEmpty()) return null
         return popupKeys
     }
+    open fun getPopupKeyLabelFlags(params: KeyboardParams): Map<String, Int> {
+        val flags = mutableMapOf<String, Int>()
+        listOfNotNull(main).plus(relevant.orEmpty()).forEach {
+            val key = it.compute(params, true) ?: return@forEach
+            if (key.labelFlags != 0) flags.putIfAbsent(key.getPopupLabel(params), key.labelFlags)
+        }
+        return flags
+    }
     open fun isEmpty(): Boolean = main == null && relevant.isNullOrEmpty()
 
     // todo: this is mutable... bad idea because we cache instances of this over multiple keyboards (see LayoutParser where this is cleaned up...)
@@ -51,5 +59,6 @@ open class PopupSet<T : AbstractKeyData>(
 
 class SimplePopups(val popupKeys: Collection<String>?) : PopupSet<AbstractKeyData>() {
     override fun getPopupKeyLabels(params: KeyboardParams) = popupKeys?.map { KeyLabel.keyLabelToActualLabel(it, params) }
+    override fun getPopupKeyLabelFlags(params: KeyboardParams) = emptyMap<String, Int>()
     override fun isEmpty(): Boolean = popupKeys.isNullOrEmpty()
 }

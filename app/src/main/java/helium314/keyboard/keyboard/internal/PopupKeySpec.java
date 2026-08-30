@@ -42,12 +42,19 @@ public final class PopupKeySpec {
     public final String mOutputText;
     @Nullable
     public final String mIconName;
+    public final int mLabelFlags;
 
     public PopupKeySpec(@NonNull final String popupKeySpec, boolean needsToUpperCase,
                         @NonNull final Locale locale) {
+        this(popupKeySpec, needsToUpperCase, locale, 0);
+    }
+
+    public PopupKeySpec(@NonNull final String popupKeySpec, boolean needsToUpperCase,
+                        @NonNull final Locale locale, int labelFlags) {
         if (popupKeySpec.isEmpty()) {
             throw new KeySpecParser.KeySpecParserError("Empty popup key spec");
         }
+        mLabelFlags = labelFlags;
         final String label = KeySpecParser.getLabel(popupKeySpec);
         mLabel = needsToUpperCase ? StringUtils.toTitleCaseOfKeyLabel(label, locale) : label;
         final int codeInSpec = KeySpecParser.getCode(popupKeySpec);
@@ -69,13 +76,14 @@ public final class PopupKeySpec {
 
     @NonNull
     public Key buildKey(final int x, final int y, final int labelFlags, final int background, @NonNull final KeyboardParams params) {
-        return new Key(mLabel, mIconName, mCode, mOutputText, null, labelFlags, background, x, y,
+        return new Key(mLabel, mIconName, mCode, mOutputText, null, labelFlags | mLabelFlags, background, x, y,
                 params.mDefaultAbsoluteKeyWidth, params.mDefaultAbsoluteRowHeight, params.mHorizontalGap, params.mVerticalGap);
     }
 
     @Override
     public int hashCode() {
         int hashCode = 31 + mCode;
+        hashCode = hashCode * 31 + mLabelFlags;
         final String iconName = mIconName;
         hashCode = hashCode * 31 + (iconName == null ? 0 : iconName.hashCode());
         final String label = mLabel;
@@ -92,6 +100,7 @@ public final class PopupKeySpec {
         }
         if (o instanceof PopupKeySpec other) {
             return mCode == other.mCode
+                    && mLabelFlags == other.mLabelFlags
                     && TextUtils.equals(mIconName, other.mIconName)
                     && TextUtils.equals(mLabel, other.mLabel)
                     && TextUtils.equals(mOutputText, other.mOutputText);

@@ -29,6 +29,7 @@ import kotlin.collections.ArraysKt;
 
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Map;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -1117,13 +1118,17 @@ public class Key implements Comparable<Key> {
 
             // popupKeys
             final String[] popupKeys = PopupKeysUtilsKt.createPopupKeysArray(popupSet, mKeyboardParams, label != null ? label : keySpec);
+            final Map<String, Integer> popupKeyLabelFlags = PopupKeysUtilsKt.getPopupKeyLabelFlags(popupSet, mKeyboardParams);
             mPopupKeysColumnAndFlags = getPopupKeysColumnAndFlagsAndSetNullInArray(params, popupKeys);
             final String[] finalPopupKeys = popupKeys == null ? null : PopupKeySpec.filterOutEmptyString(popupKeys);
             if (finalPopupKeys != null && finalPopupKeys.length > 0) {
                 PopupKeySpec[] tempPopupKeys = new PopupKeySpec[finalPopupKeys.length];
                 boolean hasRepeatPopup = false;
                 for (int i = 0; i < finalPopupKeys.length; i++) {
-                    tempPopupKeys[i] = new PopupKeySpec(finalPopupKeys[i], needsToUpcase, localeForUpcasing);
+                    final int individualLabelFlags = popupKeyLabelFlags.getOrDefault(finalPopupKeys[i], 0);
+                    tempPopupKeys[i] = new PopupKeySpec(finalPopupKeys[i],
+                            needsToUpcase(mLabelFlags | individualLabelFlags, params.mId.getElement()),
+                            localeForUpcasing, individualLabelFlags);
                     if (tempPopupKeys[i].mCode == KeyCode.KEY_REPEAT)
                         hasRepeatPopup = true;
                 }

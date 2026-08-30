@@ -332,6 +332,26 @@ f""", // no newline at the end
     } }]]""", Expected('a'.code, "a", popups = listOf(null to ' '.code)))
     }
 
+    @Test fun `individual popup label flags preserve case`() {
+        val layoutName = "custom.popup-label-flags"
+        val layoutFile = LayoutUtilsCustom.getLayoutFile(layoutName, LayoutType.MAIN, latinIME)
+        val subtype = SettingsSubtype.fallbackSubtype.withLayout(LayoutType.MAIN, layoutName).toAdditionalSubtype()
+        try {
+            layoutFile.writeText("""[[{"label":"a","popup":{"relevant":[{"label":"test","labelFlags":65536}]}}]]""")
+            LayoutUtilsCustom.onLayoutFileChanged()
+            LayoutParser.clearCache()
+
+            val (_, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET_MANUAL_SHIFTED)
+            val popup = keys.flatten().flatMap { it.mPopupKeys?.asList().orEmpty() }
+                .first { it.mLabel.equals("test", ignoreCase = true) }
+            assertEquals("test", popup.mLabel)
+        } finally {
+            layoutFile.delete()
+            LayoutUtilsCustom.onLayoutFileChanged()
+            LayoutParser.clearCache()
+        }
+    }
+
     @Test fun popupKeyWithIconAndExplicitAndImplicitCode() {
         assertIsExpected("""[[{ "label": "a", "popup": { "relevant": [
        { "label": "!icon/go_key|", "code": 32 }
