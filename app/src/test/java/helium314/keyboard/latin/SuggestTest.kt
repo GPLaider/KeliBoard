@@ -30,10 +30,12 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.Implementation
 import org.robolectric.annotation.Implements
 import org.robolectric.shadows.ShadowLog
+import org.robolectric.util.ReflectionHelpers
 import java.util.*
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 @Suppress("NonAsciiCharacters")
 @RunWith(RobolectricTestRunner::class)
@@ -275,6 +277,20 @@ class SuggestTest {
         assert(!result.last()) // should not be corrected
     }
 
+    @Test fun `hyphenated compound is not autocorrected to words separated by spaces`() {
+        val locale = Locale.ENGLISH
+        val result = shouldBeAutoCorrected(
+            "still-useful",
+            listOf(suggestion("still a useful", 2_000_000, locale)),
+            null,
+            null,
+            locale,
+            confidenceAggressive,
+        )
+
+        assertFalse(result.last())
+    }
+
     @Test fun `personal dictionary word is not autocorrected`() {
         val locale = Locale.ENGLISH
         val result = shouldBeAutoCorrected(
@@ -289,6 +305,26 @@ class SuggestTest {
             confidenceModest,
         )
         assertEquals(listOf(false, false), result)
+    }
+
+    @Test fun `typing auto-capitalized word clears lowercase blacklist entry`() {
+        val facilitator = DictionaryFacilitatorImpl()
+        val dictionaryGroup = ReflectionHelpers.getField<List<Any>>(facilitator, "dictionaryGroups").single()
+        ReflectionHelpers.callInstanceMethod<Unit>(
+            dictionaryGroup,
+            "addToBlacklist",
+            ReflectionHelpers.ClassParameter.from(String::class.java, "more"),
+        )
+
+        facilitator.addToUserHistory(
+            "More", true, NgramContext.EMPTY_PREV_WORDS_INFO, 0, false,
+        )
+
+        assertFalse(ReflectionHelpers.callInstanceMethod<Boolean>(
+            dictionaryGroup,
+            "isBlacklisted",
+            ReflectionHelpers.ClassParameter.from(String::class.java, "more"),
+        ))
     }
 
     @Test fun `typed word is first suggestion`() { // first suggestion will not be shown to the user
@@ -316,6 +352,29 @@ class SuggestTest {
         assertEquals("henlo", results.mSuggestedWordInfoList[2].mWord) // if autocorrection is pending, typed word is next suggestion
         assertEquals("hell", results.mSuggestedWordInfoList[3].mWord)
         assertEquals("hem", results.mSuggestedWordInfoList[4].mWord)
+    }
+
+    // https://github.com/HeliBorg/HeliBoard/issues/2665
+    @Test fun `mixed alphanumeric token is suggested but never autocorrected`() {
+        enableAutocorrect(confidenceVeryAggressive)
+        tapTypingSuggestions = suggestionResults(listOf(
+            suggestion("5the", 650000, currentTypingLocale),
+        ))
+
+        val results = getSuggestedWords(false, "5th", CapsMode.OFF)
+        assert(!results.mWillAutoCorrect)
+        assertEquals(listOf("5th", "5the"), results.mSuggestedWordInfoList.map { it.mWord })
+    }
+
+    @Test fun `single digit substituted for a letter can be autocorrected`() {
+        enableAutocorrect(confidenceVeryAggressive)
+        tapTypingSuggestions = suggestionResults(listOf(
+            suggestion("adjustment", 650000, currentTypingLocale),
+        ))
+
+        val results = getSuggestedWords(false, "adj7stment", CapsMode.OFF)
+        assert(results.mWillAutoCorrect)
+        assertEquals("adjustment", results.mSuggestedWordInfoList[1].mWord)
     }
 
     @Test fun `CenterSuggestionTextToEnter has typed text or autocorrect as first suggestion`() {

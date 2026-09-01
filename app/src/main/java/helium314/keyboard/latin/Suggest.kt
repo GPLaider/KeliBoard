@@ -171,6 +171,7 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
         if (typedWordInfo?.mSourceDict?.mDictType == Dictionary.TYPE_USER) return false to false
 
         val consideredWord = typedWordString.dropLast(trailingSingleQuotesCount)
+        if ("@.-".any { typedWordString.contains(it) && firstSuggestionInContainer?.mWord?.contains(it) != true }) return false to false
         val firstAndTypedEmptyInfos by lazy { getEmptyWordSuggestions() }
 
         val scoreLimit = Settings.getValues().mScoreLimitForAutocorrect
@@ -181,10 +182,6 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
                 || firstSuggestionInContainer?.isKindOf(SuggestedWordInfo.KIND_WHITELIST) == true
                 || (consideredWord.length > 1
                     && typedWordInfo?.mSourceDict == null // more than 1 letter and not in dictionary
-                    // if the typed word contains @ or ., the suggestion also needs to contain it
-                    // (avoid autocorrecting mail addresses, URLs & similar to something different)
-                    && (!typedWordString.contains('@') || firstSuggestionInContainer?.mWord?.contains('@') == true)
-                    && (!typedWordString.contains('.') || firstSuggestionInContainer?.mWord?.contains('.') == true)
                     )
             ) {
             allowsToBeAutoCorrected = true
@@ -208,7 +205,8 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
             || !allowsToBeAutoCorrected // If the word does not allow to be auto-corrected, then we don't auto-correct.
             || !wordComposer.isComposingWord // If we are doing prediction, then we never auto-correct of course
             || suggestionResults.isEmpty() // If we don't have suggestion results, we can't evaluate the first suggestion for auto-correction
-            || wordComposer.hasDigits() // If the word has digits, we never auto-correct because it's likely the word was type with a lot of care // todo: but what if user touched the number row?
+            || (wordComposer.hasDigits()
+                && !isSingleDigitLetterSubstitution(typedWordString, firstSuggestionInContainer?.mWord))
             || (wordComposer.isMostlyCaps && !wordComposer.isAllUpperCase) // If the word is mostly caps, we never auto-correct because this is almost certainly intentional
             || wordComposer.isResumed // We never auto-correct when suggestions are resumed because it would be unexpected
             // If we don't have a main dictionary, we never want to auto-correct. The reason
@@ -265,6 +263,20 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
             }
         }
         return allowsToBeAutoCorrected to hasAutoCorrection
+    }
+
+    private fun isSingleDigitLetterSubstitution(typedWord: String, suggestedWord: String?): Boolean {
+        if (suggestedWord == null) return false
+        val typed = typedWord.codePoints().toArray()
+        val suggested = suggestedWord.codePoints().toArray()
+        if (typed.size != suggested.size) return false
+        var substitutions = 0
+        for (index in typed.indices) {
+            if (typed[index] == suggested[index]) continue
+            if (!Character.isDigit(typed[index]) || !Character.isLetter(suggested[index])
+                || ++substitutions > 1) return false
+        }
+        return substitutions == 1
     }
 
     // Retrieves suggestions for the batch input

@@ -14,6 +14,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.Process
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.text.InputType
@@ -24,6 +25,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import androidx.core.content.ContextCompat
+import androidx.core.os.UserHandleCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
@@ -90,8 +92,13 @@ class ClipboardHistoryManager(
     fun getPrimaryClipIfText(): String? {
         if (tempPrimaryClip) return null
         val clipData = clipboardManager.primaryClip ?: return null
-        if (clipData.itemCount == 0 || clipData.description?.hasMimeType("text/*") != true) return null
-        return clipData.getItemAt(0)?.coerceToText(latinIME)?.toString()?.takeIf { it.isNotEmpty() }
+        if (clipData.itemCount == 0) return null
+        val item = clipData.getItemAt(0) ?: return null
+        // Some terminal-oriented clipboard providers expose text with a non-text MIME type.
+        // Prefer that text over a KEYCODE_PASTE fallback, which those apps can render as ^ or ^M.
+        val text = item.text ?: if (clipData.description?.hasMimeType("text/*") == true)
+            item.coerceToText(latinIME) else null
+        return text?.toString()?.takeIf { it.isNotEmpty() }
     }
 
     fun onInputViewHidden() {
@@ -112,6 +119,8 @@ class ClipboardHistoryManager(
     //  care about other clip items than first?
     private fun fetchPrimaryClip() {
         if (tempPrimaryClip) return // avoid updating history
+        val clientUid = latinIME.currentInputBinding?.uid
+        if (clientUid != null && isCrossProfileClient(clientUid, Process.myUid())) return
         val clipData = clipboardManager.primaryClip ?: return
         if (clipData.itemCount == 0) return
         val clipItem = clipData.getItemAt(0) ?: return
@@ -435,6 +444,9 @@ class ClipboardHistoryManager(
 
         internal fun canSuggestRecentScreenshot(deviceLocked: Boolean, inputType: Int): Boolean =
             !deviceLocked && !InputTypeUtils.isAnyPasswordInputType(inputType) && !InputTypeUtils.isNumberInputType(inputType)
+
+        internal fun isCrossProfileClient(clientUid: Int, imeUid: Int): Boolean =
+            UserHandleCompat.getUserHandleForUid(clientUid) != UserHandleCompat.getUserHandleForUid(imeUid)
 
         internal fun isScreenshot(displayName: String?, relativePath: String?, bucketName: String?): Boolean =
             sequenceOf(displayName, relativePath, bucketName).filterNotNull().any {

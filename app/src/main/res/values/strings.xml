@@ -257,6 +257,7 @@
         \n\nWarning: loading external code can be a security risk. Only use a library from a source you trust.</string>
     <!-- Message when the library checksum doesn't match -->
     <string name="checksum_mismatch_message">Unknown library file. Are you sure you got it from a trusted source and it is for \'%s\'?</string>
+    <string name="invalid_gesture_library_file">The selected file is not a native library. Download the raw .so file, not a web page.</string>
     <!-- Button text for loading gesture library -->
     <string name="load_gesture_library_button_load">Load library</string>
     <!-- Button text for deleting gesture library -->

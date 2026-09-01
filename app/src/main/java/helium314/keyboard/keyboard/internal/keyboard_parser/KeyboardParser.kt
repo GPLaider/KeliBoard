@@ -64,6 +64,13 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
         }
         val baseKeys = LayoutParser.parseLayout(layoutType, params, context)
         val keysInRows = createRows(baseKeys)
+        val expectedRows = KeyboardParams.DEFAULT_KEYBOARD_ROWS +
+                if (params.mId.element.isAlphaOrSymbol && params.mId.numberRowEnabled) 1 else 0
+        if (!params.mId.element.isBottomRow && keysInRows.size > expectedRows) {
+            val extraHeight = (params.mBaseHeight * (keysInRows.size.toFloat() / expectedRows - 1f)).roundToInt()
+            params.mBaseHeight += extraHeight
+            params.mOccupiedHeight += extraHeight
+        }
         val heightRescale: Float
         if (params.mId.element.isBottomRow) {
             heightRescale = 4f

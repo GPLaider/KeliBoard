@@ -45,6 +45,7 @@ import helium314.keyboard.keyboard.KeyboardActionListenerImpl;
 import helium314.keyboard.keyboard.KeyboardMode;
 import helium314.keyboard.keyboard.emoji.EmojiPalettesView;
 import helium314.keyboard.keyboard.emoji.EmojiSearchActivity;
+import helium314.keyboard.keyboard.emoji.RecentEmojis;
 import helium314.keyboard.keyboard.internal.KeyboardIconsSet;
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode;
 import helium314.keyboard.latin.common.InsetsOutlineProvider;
@@ -141,6 +142,8 @@ public class LatinIME extends InputMethodService implements
     private View mInputView;
     private InsetsOutlineProvider mInsetsUpdater;
     private SuggestionStripView mSuggestionStripView;
+    @Nullable
+    private Intent mPendingEmojiSearchResult;
 
     private RichInputMethodManager mRichImm;
     final KeyboardSwitcher mKeyboardSwitcher;
@@ -555,10 +558,11 @@ public class LatinIME extends InputMethodService implements
         if (FoldableUtils.INSTANCE.isFoldable())
             foldableObserver = new FoldableUtils.FoldableObserver(this);
 
-        // Register to receive ringer mode change.
+        // Register to receive ringer mode and wallpaper changes.
         final IntentFilter filter = new IntentFilter();
         filter.addAction(AudioManager.RINGER_MODE_CHANGED_ACTION);
-        registerReceiver(mRingerModeChangeReceiver, filter);
+        filter.addAction(Intent.ACTION_WALLPAPER_CHANGED);
+        registerReceiver(mSystemChangeReceiver, filter);
 
         // Register to receive installation and removal of a dictionary pack.
         final IntentFilter packageFilter = new IntentFilter();
@@ -698,7 +702,7 @@ public class LatinIME extends InputMethodService implements
         mSettings.onDestroy();
         if (foldableObserver != null)
             foldableObserver.unregister(this);
-        unregisterReceiver(mRingerModeChangeReceiver);
+        unregisterReceiver(mSystemChangeReceiver);
         unregisterReceiver(mDictionaryPackInstallReceiver);
         unregisterReceiver(mDictionaryDumpBroadcastReceiver);
         unregisterReceiver(mRestartAfterDeviceUnlockReceiver);
@@ -998,6 +1002,8 @@ public class LatinIME extends InputMethodService implements
                 currentSettingsValues.mGestureInputEnabled,
                 currentSettingsValues.mGestureTrailEnabled,
                 currentSettingsValues.mGestureFloatingPreviewTextEnabled);
+
+        consumePendingEmojiSearchResult();
 
         if (TRACE) Debug.startMethodTracing("/data/trace/latinime");
     }
@@ -1544,6 +1550,7 @@ public class LatinIME extends InputMethodService implements
                 mKeyboardSwitcher.getKeyboardCapsMode(),
                 mKeyboardSwitcher.getCurrentKeyboardScript(),
                 mHandler);
+        if (suggestionInfo.isEmoji()) RecentEmojis.add(suggestionInfo.mWord);
         updateStateAfterInputTransaction(completeInputTransaction);
     }
 
@@ -1696,8 +1703,8 @@ public class LatinIME extends InputMethodService implements
     // boolean onKeyLongPress(final int keyCode, final KeyEvent event);
     // boolean onKeyMultiple(final int keyCode, final int count, final KeyEvent event);
 
-    // receive ringer mode change.
-    private final BroadcastReceiver mRingerModeChangeReceiver = new BroadcastReceiver() {
+    // Receive system changes that affect keyboard behavior or appearance.
+    private final BroadcastReceiver mSystemChangeReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(final Context context, final Intent intent) {
             final String action = intent.getAction();
@@ -1711,6 +1718,8 @@ public class LatinIME extends InputMethodService implements
                 }
                 Log.i(TAG, "ringer mode changed, zen_mode on: "+dnd);
                 AudioAndHapticFeedbackManager.getInstance().onRingerModeChanged(dnd);
+            } else if (Intent.ACTION_WALLPAPER_CHANGED.equals(action)) {
+                mKeyboardSwitcher.setThemeNeedsReload();
             }
         }
     };
@@ -1742,14 +1751,13 @@ public class LatinIME extends InputMethodService implements
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && EmojiSearchActivity.EMOJI_SEARCH_DONE_ACTION.equals(intent.getAction()) && ! isEmojiSearch()) {
+        if (intent != null && EmojiSearchActivity.EMOJI_SEARCH_DONE_ACTION.equals(intent.getAction())) {
             if (intent.getBooleanExtra(EmojiSearchActivity.IME_CLOSED_KEY, false)) {
                 requestHideSelf(0);
+            } else if (isEmojiSearch()) {
+                mPendingEmojiSearchResult = intent;
             } else {
-                mHandler.postDelayed(() -> KeyboardSwitcher.getInstance().setEmojiKeyboard(), 100);
-                if (intent.hasExtra(EmojiSearchActivity.EMOJI_KEY)) {
-                     onTextInput(intent.getStringExtra(EmojiSearchActivity.EMOJI_KEY));
-                }
+                handleEmojiSearchResult(intent);
             }
 
             stopSelf(startId); // Allow the service to be destroyed when unbound
@@ -1757,6 +1765,20 @@ public class LatinIME extends InputMethodService implements
         }
 
         return super.onStartCommand(intent, flags, startId);
+    }
+
+    private void consumePendingEmojiSearchResult() {
+        if (mPendingEmojiSearchResult == null || isEmojiSearch()) return;
+        final Intent intent = mPendingEmojiSearchResult;
+        mPendingEmojiSearchResult = null;
+        handleEmojiSearchResult(intent);
+    }
+
+    private void handleEmojiSearchResult(final Intent intent) {
+        mHandler.postDelayed(() -> KeyboardSwitcher.getInstance().setEmojiKeyboard(), 100);
+        if (intent.hasExtra(EmojiSearchActivity.EMOJI_KEY)) {
+            onTextInput(intent.getStringExtra(EmojiSearchActivity.EMOJI_KEY));
+        }
     }
 
     public boolean isEmojiSearch() {

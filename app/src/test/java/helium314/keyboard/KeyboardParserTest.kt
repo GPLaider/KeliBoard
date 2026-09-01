@@ -183,6 +183,14 @@ f""", // no newline at the end
         val shift = LayoutParser.parseSimpleString("shift").single().single().compute(params)!!.toKeyParams(params)
 
         assertEquals(KeyCode.SHIFT, shift.mCode)
+
+        val textKey = LayoutParser.parseSimpleString("a").single().single()
+        fun codeFor(element: KeyboardElement): Int {
+            params.mId = KeyboardId(element, layoutParams)
+            return textKey.compute(params)!!.toKeyParams(params).mCode
+        }
+        assertEquals('A'.code, codeFor(KeyboardElement.ALPHABET_MANUAL_SHIFTED))
+        assertEquals('A'.code, codeFor(KeyboardElement.ALPHABET_SHIFT_LOCKED))
     }
 
     @Test fun `cheonjiin number row preserves Samsung four-column alignment`() {
@@ -290,10 +298,18 @@ f""", // no newline at the end
             LayoutUtilsCustom.onLayoutFileChanged()
             LayoutParser.clearCache()
 
-            val (_, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET)
+            val (keyboard, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET)
+            val (reference, _) = buildKeyboard(
+                EditorInfo(), SettingsSubtype.fallbackSubtype.toAdditionalSubtype(), KeyboardElement.ALPHABET
+            )
             val popupsByLabel = keys.flatten().associate { it.mLabel to it.mPopupKeys?.mapNotNull { popup -> popup.mLabel } }
             assertTrue(popupsByLabel.getValue("a")!!.contains("@"))
             assertTrue(popupsByLabel.getValue("z")!!.contains("*"))
+            assertTrue(keyboard.mOccupiedHeight > reference.mOccupiedHeight)
+            assertEquals(
+                reference.sortedKeys.first { it.label == "q" }.height,
+                keyboard.sortedKeys.first { it.label == "q" }.height,
+            )
         } finally {
             layoutFile.delete()
             LayoutUtilsCustom.onLayoutFileChanged()
@@ -302,12 +318,23 @@ f""", // no newline at the end
     }
 
     @Test fun `secondary layout includes each key popup`() {
-        val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(Locale.ENGLISH, "qwerty", true)
-        val (_, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET)
-        val qPopups = keys.flatten().first { it.mLabel == "q" }.mPopupKeys?.mapNotNull { it.mLabel }.orEmpty()
+        val layoutName = "custom.symbol-popups"
+        val layoutFile = LayoutUtilsCustom.getLayoutFile(layoutName, LayoutType.SYMBOLS, latinIME)
+        val subtype = SettingsSubtype.fallbackSubtype.withLayout(LayoutType.SYMBOLS, layoutName).toAdditionalSubtype()
+        try {
+            layoutFile.writeText("""[[{"label":"%","popup":{"relevant":[{"label":"‰"}]}},{"label":"!"},{"label":"€"}],[{"label":"@"}],[{"label":"#"}]]""")
+            LayoutUtilsCustom.onLayoutFileChanged()
+            LayoutParser.clearCache()
 
-        assertTrue("%" in qPopups)
-        assertTrue("‰" in qPopups)
+            val (_, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET)
+            val popups = keys.flatten().associate { it.mLabel to it.mPopupKeys?.mapNotNull { popup -> popup.mLabel }.orEmpty() }
+            assertTrue(popups.getValue("q").containsAll(listOf("%", "‰")))
+            assertTrue(popups.getValue("e").containsAll(listOf("€", "é")))
+        } finally {
+            layoutFile.delete()
+            LayoutUtilsCustom.onLayoutFileChanged()
+            LayoutParser.clearCache()
+        }
     }
 
     @Test fun `turkish secondary locale keeps dotted capital i`() {
@@ -607,6 +634,45 @@ f""", // no newline at the end
         assertEquals("k", keyParams.mPopupKeys?.first()?.mLabel)
     }
 
+    @Test fun labelTextKeyUsesInputTextForLocalePopups() {
+        val locale = Locale.forLanguageTag("bn-BD")
+        val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(
+            locale, "bengali_unijoy", false
+        )
+        val layoutParams = KeyboardLayoutSet.Params().apply {
+            editorInfo = EditorInfo()
+            this.subtype = RichInputMethodSubtype.get(subtype)
+        }
+        params.mId = KeyboardId(KeyboardElement.ALPHABET, layoutParams)
+        params.mPopupKeyOrder.add("language_priority")
+        LocaleKeyboardInfos.clearCache()
+        LocaleKeyboardInfos.addLocaleKeyTextsToParams(
+            latinIME, params, LocaleKeyboardInfos.POPUP_KEYS_NORMAL
+        )
+
+        val key = LayoutParser.parseJsonString("""[[{ "label": "ra|র" }]]""")
+            .single().single().compute(params)!!.toKeyParams(params)
+
+        assertEquals("ra", key.mLabel)
+        assertEquals('র'.code, key.mCode)
+        assertEquals(listOf("ল", "র‍্য"), key.mPopupKeys?.mapNotNull { it.mLabel })
+    }
+
+    @Test fun explicitAutoColumnOrderWinsForParentheses() {
+        val keyParams = LayoutParser.parseJsonString("""[[{ "label": "(", "popup": {
+          "main": { "label": "[" }, "relevant": [
+          { "label": "!autoColumnOrder!2" }, { "label": "{" },
+          { "label": "‹" }, { "label": "«" }
+        ] } }]]""").single().single().compute(params)!!.toKeyParams(params)
+        keyParams.mAbsoluteWidth = 1f
+        keyParams.mAbsoluteHeight = 1f
+        val key = keyParams.createKey()
+
+        assertEquals(2, key.popupKeysColumnNumber)
+        assertTrue(key.isPopupKeysFixedColumn)
+        assertEquals(false, key.isPopupKeysFixedOrder)
+    }
+
     @Test fun popupWithCodeAndLabel() {
         val key = LayoutParser.parseJsonString("""[[{ "label": "w", "popup": {
           "main": { "code":   55, "label": "!" }
@@ -727,6 +793,20 @@ f""", // no newline at the end
         assertEquals(11, keys2[0].size)
         assertEquals(11, keys2[1].size)
         assertEquals(10, keys2[2].size)
+    }
+
+    @Test fun popupHintIsDefaultLongPressKey() {
+        val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(Locale.GERMANY, "qwertz+", true)
+        val (_, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET)
+
+        fun assertHintIsDefault(label: String, expected: String) {
+            val key = keys.flatten().single { it.mLabel == label }
+            assertEquals(expected, key.mHintLabel)
+            assertEquals(expected, key.mPopupKeys?.first()?.mLabel)
+        }
+
+        assertHintIsDefault("s", "#")
+        assertHintIsDefault("q", "1")
     }
 
     @Test fun `popup key count does not depend on shift for (for simple layout)`() {

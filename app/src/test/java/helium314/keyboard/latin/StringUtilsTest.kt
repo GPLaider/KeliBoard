@@ -22,6 +22,7 @@ import helium314.keyboard.latin.utils.TextRange
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.text.BreakIterator
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import kotlin.test.Test
@@ -175,6 +176,21 @@ class StringUtilsTest {
         assert(isEmoji("🖐️"))
         assert(isEmoji("🖐🏾"))
         assert(!isEmoji("🖐🏾🏼"))
+    }
+
+    @Test fun `emoji detection does not depend on system grapheme data`() {
+        val field = Class.forName("helium314.keyboard.latin.common.StringUtilsKt")
+            .getDeclaredField("LocalBreakIterator")
+            .apply { isAccessible = true }
+        @Suppress("UNCHECKED_CAST")
+        val localBreakIterator = field.get(null) as ThreadLocal<BreakIterator>
+        val original = localBreakIterator.get()
+        try {
+            localBreakIterator.set(BreakIterator.getWordInstance())
+            assert(isEmoji("👩‍💻"))
+        } finally {
+            localBreakIterator.set(original)
+        }
     }
 
     @Test fun moveStepsToCharCount() {

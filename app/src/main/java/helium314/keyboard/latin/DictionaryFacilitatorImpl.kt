@@ -329,6 +329,8 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
             // remove manually entered blacklisted words from blacklist for likely matching languages
             dictionaryGroups.filter { it.confidence == preferredGroup.confidence }.forEach {
                 it.removeFromBlacklist(currentWord)
+                if (wasCurrentWordAutoCapitalized)
+                    it.removeFromBlacklist(currentWord.decapitalize(it.locale))
             }
         }
     }
@@ -486,7 +488,8 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
         composedData: ComposedData, ngramContext: NgramContext, keyboard: Keyboard,
         settingsValuesForSuggestion: SettingsValuesForSuggestion, sessionId: Int, inputStyle: Int
     ): SuggestionResults {
-        val proximityInfoHandle = keyboard.proximityInfo.nativeProximityInfo
+        val proximityInfo = keyboard.proximityInfo
+        val proximityInfoHandle = proximityInfo.nativeProximityInfo
         val weightOfLangModelVsSpatialModel = floatArrayOf(Dictionary.NOT_A_WEIGHT_OF_LANG_MODEL_VS_SPATIAL_MODEL)
 
         val waitForOtherDicts = if (dictionaryGroups.size == 1) null else CountDownLatch(dictionaryGroups.size - 1)
@@ -513,6 +516,8 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
 
         includeAtLeastTwoWordSuggestions(suggestionResults, suggestionsArray, composedData.mTypedWord)
 
+        // Keep the Java owner alive until every native call using its raw pointer has finished.
+        synchronized(proximityInfo) {}
         return suggestionResults
     }
 

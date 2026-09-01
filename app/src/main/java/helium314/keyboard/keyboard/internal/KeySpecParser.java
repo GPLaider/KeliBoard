@@ -150,6 +150,13 @@ public final class KeySpecParser {
     }
 
     @Nullable
+    public static String getExplicitOutputText(@Nullable final String keySpec) {
+        if (keySpec == null) return null;
+        final int labelEnd = indexOfLabelEnd(keySpec);
+        return hasCode(keySpec, labelEnd) ? null : getOutputTextInternal(keySpec, labelEnd);
+    }
+
+    @Nullable
     public static String getOutputText(@Nullable final String keySpec, final int code) {
         if (keySpec == null) {
             // TODO: Throw {@link KeySpecParserError} once Key.keyLabel attribute becomes mandatory.

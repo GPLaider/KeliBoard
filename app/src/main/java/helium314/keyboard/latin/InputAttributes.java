@@ -54,7 +54,8 @@ public final class InputAttributes {
         mEditorInfo = editorInfo;
         mPackageNameForPrivateImeOptions = packageNameForPrivateImeOptions;
         mTargetApplicationPackageName = null != editorInfo ? editorInfo.packageName : null;
-        mInputType = AppWorkarounds.INSTANCE.adjustInputType(null != editorInfo ? editorInfo.inputType : 0, mTargetApplicationPackageName);
+        mInputType = normalizeInputType(null != editorInfo ? editorInfo.inputType : 0,
+                mTargetApplicationPackageName);
         final int inputClass = mInputType & InputType.TYPE_MASK_CLASS;
         mIsPasswordField = InputTypeUtils.isPasswordInputType(mInputType)
                 || InputTypeUtils.isVisiblePasswordInputType(mInputType);
@@ -142,8 +143,16 @@ public final class InputAttributes {
     }
 
     public boolean isSameInputType(final EditorInfo editorInfo) {
-        return editorInfo.inputType == mInputType && mEditorInfo != null
+        return mEditorInfo != null
+                && normalizeInputType(editorInfo.inputType, mTargetApplicationPackageName) == mInputType
                 && (mEditorInfo.imeOptions & EditorInfo.IME_FLAG_FORCE_ASCII) == (editorInfo.imeOptions & EditorInfo.IME_FLAG_FORCE_ASCII);
+    }
+
+    private static int normalizeInputType(final int inputType, final String packageName) {
+        final int adjusted = AppWorkarounds.INSTANCE.adjustInputType(inputType, packageName);
+        return adjusted != InputType.TYPE_NULL
+                && (adjusted & InputType.TYPE_MASK_CLASS) == InputType.TYPE_NULL
+                ? adjusted | InputType.TYPE_CLASS_TEXT : adjusted;
     }
 
     private boolean hasNoMicrophoneKeyOption() {

@@ -20,7 +20,6 @@
 
 namespace latinime {
 
-const int JniDataUtils::CODE_POINT_REPLACEMENT_CHARACTER = 0xFFFD;
 const int JniDataUtils::CODE_POINT_NULL = 0;
 
 /* static */ void JniDataUtils::outputWordProperty(JNIEnv *const env,
@@ -100,7 +99,7 @@ const int JniDataUtils::CODE_POINT_NULL = 0;
         jintArray shortcutTargetCodePointArray = env->NewIntArray(targetCodePoints->size());
         JniDataUtils::outputCodePoints(env, shortcutTargetCodePointArray, 0 /* start */,
                 targetCodePoints->size(), targetCodePoints->data(), targetCodePoints->size(),
-                false /* needsNullTermination */);
+                false /* needsNullTermination */, true /* preserveLineBreaks */);
         env->CallBooleanMethod(outShortcutTargets, addMethodId, shortcutTargetCodePointArray);
         env->DeleteLocalRef(shortcutTargetCodePointArray);
         jobject integerProbability = env->NewObject(integerClass, intToIntegerConstructorId,

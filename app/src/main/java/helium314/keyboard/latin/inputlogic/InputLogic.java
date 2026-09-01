@@ -492,8 +492,8 @@ public final class InputLogic {
         if (GestureDataGatheringKt.useBackgroundGathering && mWordComposer.isComposingWord() && mWordComposer.isCursorFrontOrMiddleOfComposingWord())
             BackgroundGatheringCache.INSTANCE.onEditWord(mWordComposer.getTypedWord());
 
-        // Hangul consumes character events before handleNonSeparatorEvent can handle cursor edits.
-        if ("hangul".equals(mWordComposer.getCombiningSpec()) && !event.isFunctionalKeyEvent()
+        // Stateful combiners consume character events before the normal cursor-edit path.
+        if (!TextUtils.isEmpty(mWordComposer.getCombiningSpec()) && !event.isFunctionalKeyEvent()
                 && mWordComposer.isCursorFrontOrMiddleOfComposingWord()) {
             final boolean isCursorInFront = mWordComposer.isCursorInFrontOfComposingWord();
             if (!isCursorInFront) {
@@ -600,10 +600,9 @@ public final class InputLogic {
         final int codePointBeforeCursor = mConnection.getCodePointBeforeCursor();
         if (Character.isLetterOrDigit(codePointBeforeCursor)
                 || settingsValues.isUsuallyFollowedBySpace(codePointBeforeCursor)) {
-            CapsMode keyboardCapsMode = keyboardSwitcher.getKeyboardCapsMode();
-            boolean autoShiftHasBeenOverridden = keyboardCapsMode == CapsMode.MANUAL
-                    || keyboardCapsMode == CapsMode.MANUAL_LOCKED
-                    || (keyboardCapsMode == CapsMode.OFF && getCurrentAutoCapsState(settingsValues) != 0);
+            boolean autoShiftHasBeenOverridden =
+                    (keyboardSwitcher.getKeyboardCapsMode() == CapsMode.OFF)
+                            != (getCurrentAutoCapsState(settingsValues) == 0);
             if (settingsValues.mAutospaceBeforeGestureTyping)
                 mSpaceState = SpaceState.PHANTOM; // influences autoCapsState
             if (!autoShiftHasBeenOverridden) {
@@ -1183,10 +1182,6 @@ public final class InputLogic {
         final boolean wasComposingWord = mWordComposer.isComposingWord();
         final boolean wasTypingWord = wasComposingWord
                 || settingsValues.isWordCodePoint(mConnection.getCodePointBeforeCursor());
-        // We avoid sending spaces in languages without spaces if we were composing.
-        final boolean shouldAvoidSendingCode = Constants.CODE_SPACE == codePoint
-                && !settingsValues.mSpacingAndPunctuations.mCurrentLanguageHasSpaces
-                && wasComposingWord;
 
         if (mWordComposer.isCursorFrontOrMiddleOfComposingWord()) {
             // If we are in the middle of a recorrection, we need to commit the recorrection
@@ -1199,9 +1194,8 @@ public final class InputLogic {
         // isComposingWord() may have changed since we stored wasComposing
         if (mWordComposer.isComposingWord()) {
             if (settingsValues.mAutoCorrectEnabled && ! isInlineEmojiSearchAction()) {
-                final String separator = shouldAvoidSendingCode ? LastComposedWord.NOT_A_SEPARATOR
-                        : StringUtils.newSingleCodePointString(codePoint);
-                commitCurrentAutoCorrection(settingsValues, separator, handler);
+                commitCurrentAutoCorrection(settingsValues,
+                        StringUtils.newSingleCodePointString(codePoint), handler);
                 inputTransaction.setDidAutoCorrect();
             } else {
                 commitTyped(settingsValues, StringUtils.newSingleCodePointString(codePoint));
@@ -1249,9 +1243,7 @@ public final class InputLogic {
                 inputTransaction.setRequiresUpdateSuggestions();
             }
 
-            if (!shouldAvoidSendingCode) {
-                mConnection.commitCodePoint(codePoint);
-            }
+            mConnection.commitCodePoint(codePoint);
         } else {
             if (SpaceState.PHANTOM == inputTransaction.getSpaceState()
                     && (settingsValues.isUsuallyFollowedBySpace(codePoint) || isInsideDoubleQuoteOrAfterDigit)) {
@@ -1304,6 +1296,8 @@ public final class InputLogic {
      */
     private void handleBackspaceEvent(final Event event, final InputTransaction inputTransaction,
             final String currentKeyboardScript) {
+        final boolean shouldConsumePhantomSpace = SpaceState.PHANTOM == mSpaceState
+                && !mConnection.hasSelection() && !mWordComposer.isComposingWord();
         mSpaceState = SpaceState.NONE;
         mDeleteCount++;
 
@@ -1318,6 +1312,10 @@ public final class InputLogic {
                 ? InputTransaction.SHIFT_UPDATE_LATER
                 : InputTransaction.SHIFT_UPDATE_NOW;
         inputTransaction.requireShiftUpdate(shiftUpdateKind);
+
+        if (shouldConsumePhantomSpace) {
+            return;
+        }
 
         if (mWordComposer.isCursorFrontOrMiddleOfComposingWord()) {
             // If we are in the middle of a recorrection, we need to commit the recorrection
@@ -1366,7 +1364,7 @@ public final class InputLogic {
                 // (non-revert) backspace handling.
                 if (inputTransaction.getSettingsValues().needsToLookupSuggestions()
                         && inputTransaction.getSettingsValues().mSpacingAndPunctuations.mCurrentLanguageHasSpaces) {
-                    restartSuggestionsOnWordTouchedByCursor(inputTransaction.getSettingsValues(), currentKeyboardScript);
+                    mLatinIME.mHandler.postResumeSuggestions(true /* shouldDelay */);
                 }
                 return;
             }
@@ -1498,7 +1496,9 @@ public final class InputLogic {
                 mSuggestionStripViewAccessor.setNeutralSuggestionStrip();
             } else if (inputTransaction.getSettingsValues().needsToLookupSuggestions()
                     && inputTransaction.getSettingsValues().mSpacingAndPunctuations.mCurrentLanguageHasSpaces) {
-                restartSuggestionsOnWordTouchedByCursor(inputTransaction.getSettingsValues(), currentKeyboardScript);
+                // Give editors time to apply the previous deletion before setting a composing
+                // region again. Otherwise a rapid second backspace may append the whole word.
+                mLatinIME.mHandler.postResumeSuggestions(true /* shouldDelay */);
             }
         }
     }
@@ -1702,9 +1702,7 @@ public final class InputLogic {
      * @param settingsValues The current settings values.
      */
     private void performRecapitalization(SettingsValues settingsValues) {
-        if (!mConnection.hasSelection() || !mRecapitalizeStatus.isEnabled()) {
-            return; // No selection or recapitalize is disabled for now
-        }
+        if (!mConnection.hasSelection()) return;
         int selectionStart = mConnection.getExpectedSelectionStart();
         int selectionEnd = mConnection.getExpectedSelectionEnd();
         int numCharsSelected = selectionEnd - selectionStart;
@@ -1714,11 +1712,20 @@ public final class InputLogic {
             // to suck possibly multiple-megabyte data.
             return;
         }
+        CharSequence selectedText = null;
+        if (!mRecapitalizeStatus.isEnabled()) {
+            selectedText = mConnection.getSelectedText(0 /* flags, 0 for no styles */);
+            if (TextUtils.isEmpty(selectedText)
+                    || selectedText.length() != Math.abs(numCharsSelected)) return;
+            mRecapitalizeStatus.enable();
+        }
         // If we have a recapitalize in progress, use it; otherwise, start a new one.
         if (!mRecapitalizeStatus.isStarted()
                 || !mRecapitalizeStatus.isSetAt(selectionStart, selectionEnd)) {
-            CharSequence selectedText = mConnection.getSelectedText(0 /* flags, 0 for no styles */);
-            if (TextUtils.isEmpty(selectedText)) return; // Race condition with the input connection
+            if (selectedText == null)
+                selectedText = mConnection.getSelectedText(0 /* flags, 0 for no styles */);
+            if (TextUtils.isEmpty(selectedText)
+                    || selectedText.length() != Math.abs(numCharsSelected)) return;
             mRecapitalizeStatus.start(selectedText.toString(), selectionStart, settingsValues.mLocale,
                     settingsValues.mSpacingAndPunctuations.mSortedWordSeparators);
         }
@@ -1882,7 +1889,8 @@ public final class InputLogic {
             mConnection.finishComposingText();
             return;
         }
-        final TextRange range = mConnection.getWordRangeAtCursor(settingsValues.mSpacingAndPunctuations, currentKeyboardScript);
+        final TextRange range = mConnection.getWordRangeAtCursor(
+                settingsValues.mSpacingAndPunctuations, currentKeyboardScript, true);
         if (null == range) return; // Happens if we don't have an input connection at all
         if (range.length() <= 0) {
             // Race condition, or touching a word in a non-supported script.
@@ -2135,18 +2143,25 @@ public final class InputLogic {
     /**
      * Tests the passed word for resumability.
      * <p>
-     * We can resume suggestions on words whose first code point is a word code point (with some
-     * nuances: check the code for details).
+     * We can resume suggestions on words whose first non-digit code point is a word code point
+     * (with some nuances: check the code for details).
      *
      * @param settings the current values of the settings.
      * @param word the word to evaluate.
      * @return whether it's fine to resume suggestions on this word.
      */
     private static boolean isResumableWord(final SettingsValues settings, final String word) {
-        final int firstCodePoint = word.codePointAt(0);
-        return settings.isWordCodePoint(firstCodePoint)
-                && Constants.CODE_SINGLE_QUOTE != firstCodePoint
-                && Constants.CODE_DASH != firstCodePoint;
+        int firstNonDigitIndex = 0;
+        while (firstNonDigitIndex < word.length()) {
+            final int codePoint = word.codePointAt(firstNonDigitIndex);
+            if (!Character.isDigit(codePoint)) {
+                return settings.isWordCodePoint(codePoint)
+                        && Constants.CODE_SINGLE_QUOTE != codePoint
+                        && Constants.CODE_DASH != codePoint;
+            }
+            firstNonDigitIndex += Character.charCount(codePoint);
+        }
+        return false;
     }
 
     /**
@@ -2484,10 +2499,10 @@ public final class InputLogic {
             startTimeMillis = SystemClock.elapsedRealtime();
             Log.d(TAG, "commitChosenWord() : [" + chosenWord + "]");
         }
-        // essentially reverted https://github.com/lineageos/android_packages_inputmethods_LatinIME/commit/ee6de1466bc98e27bd414c9a7451f2aee3f9e721
-        // can't find any drawback (performance, neither when setting nor when reading)
-        final CharSequence chosenWordWithSuggestions = getTextWithSuggestionSpan(mLatinIME, chosenWord,
-                mSuggestedWords, getDictionaryFacilitatorLocale());
+        // Initial suggestions don't yet account for resumed-word rules, so only cache recomputed ones.
+        final CharSequence chosenWordWithSuggestions = mWordComposer.isResumed()
+                ? getTextWithSuggestionSpan(mLatinIME, chosenWord, mSuggestedWords, getDictionaryFacilitatorLocale())
+                : chosenWord;
         if (DebugFlags.DEBUG_ENABLED) {
             long runTimeMillis = SystemClock.elapsedRealtime() - startTimeMillis;
             Log.d(TAG, "commitChosenWord() : " + runTimeMillis + " ms to run "

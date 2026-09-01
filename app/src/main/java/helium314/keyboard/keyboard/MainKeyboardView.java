@@ -18,6 +18,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Paint.Align;
 import android.graphics.Typeface;
+import android.os.Build;
 import android.util.AttributeSet;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
@@ -55,9 +56,11 @@ import helium314.keyboard.latin.define.DebugFlags;
 import helium314.keyboard.latin.settings.DebugSettings;
 import helium314.keyboard.latin.settings.Defaults;
 import helium314.keyboard.latin.settings.Settings;
+import helium314.keyboard.latin.utils.InlineAutofillUtils;
 import helium314.keyboard.latin.utils.KtxKt;
 import helium314.keyboard.latin.utils.LanguageOnSpacebarUtils;
 import helium314.keyboard.latin.utils.Log;
+import helium314.keyboard.latin.utils.SubtypeLocaleUtils;
 import helium314.keyboard.latin.utils.TypefaceUtils;
 
 import java.util.ArrayList;
@@ -377,10 +380,12 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
         getLocationInWindow(mOriginCoords);
         mKeyPreviewChoreographer.placeAndShowKeyPreview(key, getKeyboard().mIconsSet, getKeyDrawParams(),
                 KeyboardSwitcher.getInstance().getWrapperView().getWidth(), mOriginCoords, mDrawingPreviewPlacerView);
+        updateInlineSuggestionsZOrder();
     }
 
     private void dismissKeyPreviewWithoutDelay(@NonNull final Key key) {
         mKeyPreviewChoreographer.dismissKeyPreview(key);
+        updateInlineSuggestionsZOrder();
         invalidateKey(key);
     }
 
@@ -401,6 +406,18 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
     private void dismissKeyPreview(@NonNull final Key key) {
         if (isHardwareAccelerated()) {
             mKeyPreviewChoreographer.dismissKeyPreview(key);
+            updateInlineSuggestionsZOrder();
+        }
+    }
+
+    private void updateInlineSuggestionsZOrder() {
+        setInlineSuggestionsOnTop(!mKeyPreviewChoreographer.hasShowingKeyPreviews()
+                && !isShowingPopupKeysPanel());
+    }
+
+    private void setInlineSuggestionsOnTop(final boolean onTop) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            InlineAutofillUtils.setInlineSuggestionsOnTop(getRootView(), onTop);
         }
     }
 
@@ -472,6 +489,7 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
 
     @Override
     protected void onDetachedFromWindow() {
+        setInlineSuggestionsOnTop(true);
         super.onDetachedFromWindow();
         mDrawingPreviewPlacerView.removeAllViews();
     }
@@ -547,6 +565,7 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
         mSlidingKeyInputDrawingPreview.dismissSlidingKeyInputPreview();
         panel.showInParent(mDrawingPreviewPlacerView);
         mPopupKeysPanel = panel;
+        updateInlineSuggestionsZOrder();
     }
 
     public boolean isShowingPopupKeysPanel() {
@@ -564,6 +583,7 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
             mPopupKeysPanel.removeFromParent();
             mPopupKeysPanel = null;
         }
+        updateInlineSuggestionsZOrder();
     }
 
     public void startDoubleTapShiftKeyTimer() {
@@ -744,6 +764,11 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
     private String layoutLanguageOnSpacebar(final Paint paint,
             final RichInputMethodSubtype subtype, final int width) {
         // Choose appropriate language name to fit into the width.
+        if (subtype.isNoLanguage()) {
+            final String layoutName = SubtypeLocaleUtils.INSTANCE.getMainLayoutDisplayName(
+                    subtype.getMainLayoutName());
+            return layoutName != null ? layoutName : subtype.getMainLayoutName();
+        }
 
         final List<Locale> secondaryLocales = Settings.getValues().mSecondaryLocales;
         // avoid showing same language twice

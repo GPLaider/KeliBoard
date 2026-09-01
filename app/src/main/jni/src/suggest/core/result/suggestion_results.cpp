@@ -31,7 +31,9 @@ void SuggestionResults::outputSuggestions(JNIEnv *env, jintArray outSuggestionCo
         const int start = outputIndex * MAX_WORD_LENGTH;
         JniDataUtils::outputCodePoints(env, outputCodePointsArray, start,
                 MAX_WORD_LENGTH /* maxLength */, suggestedWord.getCodePoint(),
-                suggestedWord.getCodePointCount(), true /* needsNullTermination */);
+                suggestedWord.getCodePointCount(), true /* needsNullTermination */,
+                (suggestedWord.getType() & Dictionary::KIND_MASK_KIND) == Dictionary::KIND_SHORTCUT
+                        /* preserveLineBreaks */);
         JniDataUtils::putIntToArray(env, outScoresArray, outputIndex, suggestedWord.getScore());
         JniDataUtils::putIntToArray(env, outSpaceIndicesArray, outputIndex,
                 suggestedWord.getIndexToPartialCommit());

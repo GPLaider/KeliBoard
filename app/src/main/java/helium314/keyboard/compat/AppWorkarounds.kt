@@ -16,7 +16,7 @@ object AppWorkarounds {
             // looks like most (all?) non-password text fields on websites are either IME_MULTI_LINE or IME_MULTI_LINE + AUTO_CORRECT + CAP_SENTENCES
             if (inputType and InputType.TYPE_TEXT_FLAG_IME_MULTI_LINE == 0) return inputType
             // for the AUTO_CORRECT flag we assume suggestions are safe and only add WEB_EDIT_TEXT
-            if (inputType and InputType.TYPE_TEXT_FLAG_AUTO_CORRECT == 0) return inputType or InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT
+            if (inputType and InputType.TYPE_TEXT_FLAG_AUTO_CORRECT != 0) return inputType or InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT
             // for all others we also add NO_SUGGESTIONS to avoid JS messing with the composing text
             inputType or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS or InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT
         }
@@ -29,6 +29,8 @@ object AppWorkarounds {
             // on their search bar in Pixel launcher, and all keyboards ignore the flags because otherwise
             // they would actually not perform the search action on action key. See https://github.com/HeliBorg/HeliBoard/issues/1989
             "com.google.android.apps.nexuslauncher" -> if (imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION != 0) imeOptions - EditorInfo.IME_FLAG_NO_ENTER_ACTION else imeOptions
+            // viaAPP's Bluetooth PIN field declares no action at all, but expects DONE. See issue #2565.
+            "com.viatraffic.viagraphapp" -> if (imeOptions == EditorInfo.IME_FLAG_NO_ENTER_ACTION) EditorInfo.IME_ACTION_DONE else imeOptions
             else -> imeOptions
         }
     }

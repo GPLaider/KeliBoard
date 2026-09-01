@@ -4,6 +4,7 @@ package helium314.keyboard.settings.preferences
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Build
+import android.widget.Toast
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -59,6 +60,11 @@ fun LoadGestureLibPreference(setting: Setting) {
             }
             otherTemporaryFile.delete()
 
+            if (!FileUtils.isElfFile(tmpfile)) {
+                tmpfile.delete()
+                Toast.makeText(ctx, R.string.invalid_gesture_library_file, Toast.LENGTH_LONG).show()
+                return@filePicker
+            }
             val checksum = ChecksumCalculator.checksum(tmpfile) ?: ""
             if (checksum == JniUtils.expectedDefaultChecksum()) {
                 renameToLibFileAndRestart(tmpfile, checksum)

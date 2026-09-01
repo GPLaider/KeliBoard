@@ -9,7 +9,9 @@ package helium314.keyboard.latin.common;
 import android.content.Context;
 import android.net.Uri;
 
+import java.io.DataInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -23,6 +25,8 @@ import helium314.keyboard.latin.utils.ExecutorUtils;
  * A simple class to help with removing directories recursively.
  */
 public class FileUtils {
+
+    private static final int ELF_MAGIC = 0x7F454C46;
 
     public static boolean deleteRecursively(final File path) {
         if (path.isDirectory()) {
@@ -51,6 +55,14 @@ public class FileUtils {
             }
         }
         return hasDeletedAllFiles;
+    }
+
+    public static boolean isElfFile(final File file) {
+        try (final DataInputStream input = new DataInputStream(new FileInputStream(file))) {
+            return input.readInt() == ELF_MAGIC;
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     /**

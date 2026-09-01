@@ -6,6 +6,7 @@ import android.inputmethodservice.InputMethodService
 import android.os.Bundle
 import android.os.Handler
 import android.text.InputType
+import android.text.SpannableString
 import android.view.KeyEvent
 import android.view.inputmethod.CompletionInfo
 import android.view.inputmethod.CorrectionInfo
@@ -26,6 +27,7 @@ import helium314.keyboard.latin.common.StringUtils
 import org.robolectric.annotation.Implementation
 import org.robolectric.annotation.Implements
 import org.robolectric.shadows.ShadowInputMethodManager
+import org.robolectric.shadows.ShadowService
 import java.util.*
 
 @Implements(LocaleManagerCompat::class)
@@ -125,7 +127,7 @@ class ShadowDictionaryFacilitatorImpl {
 
 // could also extend LatinIME, it's not final anyway
 @Implements(InputMethodService::class)
-class ShadowInputMethodService {
+class ShadowInputMethodService : ShadowService() {
     companion object {
         var batchEdit = 0
         var text = ""
@@ -133,8 +135,15 @@ class ShadowInputMethodService {
         var selectionEnd = 0
         var composingStart = -1
         var composingEnd = -1
+        var selectedTextLimit = Int.MAX_VALUE
+        var textAfterCursorAvailable = true
+        var lastContextMenuAction: Int? = null
+        var contextMenuCopiedText: String? = null
         var currentInputType = InputType.TYPE_CLASS_TEXT
         var currentImeOptions = 0
+        var currentPrivateImeOptions: String? = null
+        var lastKeyEvent: KeyEvent? = null
+        val committedTexts = mutableListOf<CharSequence>()
 
         // convenience for access
         val textBeforeCursor get() = text.substring(0, selectionStart)
@@ -153,8 +162,15 @@ class ShadowInputMethodService {
             selectionEnd = 0
             composingStart = -1
             composingEnd = -1
+            selectedTextLimit = Int.MAX_VALUE
+            textAfterCursorAvailable = true
+            lastContextMenuAction = null
+            contextMenuCopiedText = null
             currentInputType = InputType.TYPE_CLASS_TEXT
             currentImeOptions = 0
+            currentPrivateImeOptions = null
+            lastKeyEvent = null
+            committedTexts.clear()
         }
     }
 
@@ -162,6 +178,7 @@ class ShadowInputMethodService {
     fun getCurrentInputEditorInfo() = EditorInfo().apply {
         inputType = currentInputType
         imeOptions = currentImeOptions
+        privateImeOptions = currentPrivateImeOptions
         // anything else?
     }
     @Implementation
@@ -175,10 +192,11 @@ class ShadowInputMethodService {
         // bad return value here is likely the cause for that weird bug improved/fixed by fixIncorrectLength
         override fun getTextBeforeCursor(p0: Int, p1: Int): CharSequence = textBeforeCursor.take(p0)
         // pretty clear (though this may be slow depending on the editor)
-        override fun getTextAfterCursor(p0: Int, p1: Int): CharSequence = textAfterCursor.take(p0)
+        override fun getTextAfterCursor(p0: Int, p1: Int): CharSequence? =
+            if (textAfterCursorAvailable) textAfterCursor.take(p0) else null
         // pretty clear
         override fun getSelectedText(p0: Int): CharSequence? = if (selectionStart == selectionEnd) null
-        else text.substring(selectionStart, selectionEnd)
+        else text.substring(selectionStart, selectionEnd).take(selectedTextLimit)
         // inserts text at cursor (right?), and sets it as composing text
         // this REPLACES currently composing text (even if at a different position)
         // moves the cursor: positive means relative to composing text start, negative means relative to start
@@ -223,6 +241,7 @@ class ShadowInputMethodService {
         }
         // as per documentation: "This behaves like calling setComposingText(text, newCursorPosition) then finishComposingText()"
         override fun commitText(p0: CharSequence, p1: Int): Boolean {
+            committedTexts.add(SpannableString(p0))
             setComposingText(p0, p1)
             finishComposingText()
             return true // whether we added the text
@@ -280,6 +299,7 @@ class ShadowInputMethodService {
             return true
         }
         override fun sendKeyEvent(p0: KeyEvent): Boolean {
+            lastKeyEvent = p0
             if (p0.action != KeyEvent.ACTION_DOWN) return true // only change the text on key down, like RichInputConnection does
             if (p0.keyCode == KeyEvent.KEYCODE_DEL) {
                 if (selectionEnd == 0) return true // nothing to delete
@@ -322,7 +342,15 @@ class ShadowInputMethodService {
         override fun deleteSurroundingTextInCodePoints(p0: Int, p1: Int): Boolean = TODO("Not yet implemented")
         override fun commitCompletion(p0: CompletionInfo?): Boolean = TODO("Not yet implemented")
         override fun performEditorAction(p0: Int): Boolean = TODO("Not yet implemented")
-        override fun performContextMenuAction(p0: Int): Boolean = TODO("Not yet implemented")
+        override fun performContextMenuAction(p0: Int): Boolean {
+            lastContextMenuAction = p0
+            if (p0 == android.R.id.copy) contextMenuCopiedText = selectedText
+            if (p0 == android.R.id.selectAll) {
+                selectionStart = 0
+                selectionEnd = text.length
+            }
+            return true
+        }
         override fun clearMetaKeyStates(p0: Int): Boolean = TODO("Not yet implemented")
         override fun reportFullscreenMode(p0: Boolean): Boolean = TODO("Not yet implemented")
         override fun performPrivateCommand(p0: String?, p1: Bundle?): Boolean = TODO("Not yet implemented")

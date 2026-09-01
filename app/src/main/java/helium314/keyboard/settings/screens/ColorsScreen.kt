@@ -137,7 +137,7 @@ fun ColorsScreen(
                     nameValid = KeyboardTheme.renameUserColors(newThemeName.text, it.text, prefs)
                     if (nameValid) {
                         newThemeName = it
-                        SettingsActivity.forceTheme = newThemeName.text
+                        (ctx.getActivity() as? SettingsActivity)?.setForceTheme(newThemeName.text, isNight)
                     }
                     nameField = it
                 },

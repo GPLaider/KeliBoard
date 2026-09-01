@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 
 #include "defines.h"
+#include "utils/jni_data_utils.h"
 
 namespace latinime {
 namespace {
@@ -116,6 +117,14 @@ TEST(CharUtilsTest, TestIsInUnicodeSpace) {
     EXPECT_TRUE(CharUtils::isInUnicodeSpace(0x0410 /* CYRILLIC CAPITAL LETTER A */));
     EXPECT_TRUE(CharUtils::isInUnicodeSpace(0x3042 /* HIRAGANA LETTER A */));
     EXPECT_TRUE(CharUtils::isInUnicodeSpace(0x1F36A /* COOKIE */));
+}
+
+TEST(JniDataUtilsTest, TestPreserveOnlyShortcutLineBreaks) {
+    EXPECT_EQ(0xFFFD, JniDataUtils::sanitizeCodePointForOutput('\n', false));
+    EXPECT_EQ('\n', JniDataUtils::sanitizeCodePointForOutput('\n', true));
+    EXPECT_EQ('\r', JniDataUtils::sanitizeCodePointForOutput('\r', true));
+    EXPECT_EQ(0xFFFD, JniDataUtils::sanitizeCodePointForOutput('\t', true));
+    EXPECT_EQ('a', JniDataUtils::sanitizeCodePointForOutput('a', true));
 }
 
 }  // namespace

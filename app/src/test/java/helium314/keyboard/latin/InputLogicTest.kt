@@ -4,6 +4,8 @@ package helium314.keyboard.latin
 import android.os.Handler
 import android.os.Message
 import android.text.InputType
+import android.text.Spanned
+import android.text.style.SuggestionSpan
 import android.view.inputmethod.*
 import androidx.core.content.edit
 import helium314.keyboard.ShadowInputMethodManager2
@@ -17,6 +19,7 @@ import helium314.keyboard.ShadowLocaleManagerCompat
 import helium314.keyboard.event.Event
 import helium314.keyboard.keyboard.KeyboardSwitcher
 import helium314.keyboard.keyboard.MainKeyboardView
+import helium314.keyboard.keyboard.emoji.RecentEmojis
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.ShadowFacilitator2.Companion.lastAddedWord
 import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo
@@ -102,11 +105,35 @@ class InputLogicTest {
         assertEquals("example", text)
     }
 
+    @Test fun `recorrection replaces a leading digit with the chosen suggestion`() {
+        setText("3ast")
+        assertEquals("3ast", composer.typedWord)
+        pickSuggestion("east")
+        assertEquals("east", text)
+    }
+
     @Test fun delete() {
         setText("hello there ")
         functionalKeyPress(KeyCode.DELETE)
         assertEquals("hello there", text)
         assertEquals("there", composingText)
+    }
+
+    @Test fun rapidBackspaceDoesNotReuseDroppedComposingRegion() {
+        setText("hello ")
+        fun pressDelete() = latinIME.onEvent(Event.createSoftwareKeypressEvent(
+            Event.NOT_A_CODE_POINT, KeyCode.DELETE, 0,
+            Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false))
+
+        pressDelete()
+        // Some web editors drop a newly resumed composing region before reporting the update.
+        composingStart = -1
+        composingEnd = -1
+        pressDelete()
+
+        assertEquals("hell", text)
+        input(' ')
+        assertEquals("hell ", text)
     }
 
     @Test fun deleteMultiCodepointText() {
@@ -216,11 +243,33 @@ class InputLogicTest {
         assertEquals(2, cursor)
     }
 
+    // https://github.com/HeliBorg/HeliBoard/issues/2245
+    @Test fun insertKhiproAtCursor() {
+        inputLogic.startInput("bn_khipro", settingsValues)
+        chainInput("ar")
+        assertEquals("আর", text)
+
+        setCursorPosition(1)
+        chainInput("ma")
+        assertEquals("আমার", text)
+        assertEquals(3, cursor)
+    }
+
     // see issue 1447
     @Test fun separatorAfterHangul() {
         latinIME.switchToSubtype(SubtypeSettings.getResourceSubtypesForLocale("ko".constructLocale()).first())
         chainInput("ㅛ.")
         assertEquals("ㅛ.", text)
+    }
+
+    // https://github.com/HeliBorg/HeliBoard/issues/2774
+    @Test fun firstSpaceAfterThaiCompositionIsInserted() {
+        latinIME.switchToSubtype(SubtypeSettings.getResourceSubtypesForLocale("th".constructLocale()).first())
+        chainInput("สวัสดี")
+
+        input(' ')
+
+        assertEquals("สวัสดี ", text)
     }
 
     // https://github.com/HeliBorg/HeliBoard/issues/2004
@@ -395,6 +444,53 @@ class InputLogicTest {
         assertEquals("s is ", text.substring(3, 8))
     }
 
+    @Test fun shiftRecapitalizesSelectionPresentWhenInputStarts() {
+        ShadowInputMethodService.text = "hello"
+        selectionStart = 0
+        selectionEnd = 5
+        composingStart = -1
+        composingEnd = -1
+        val editorInfo = EditorInfo().apply {
+            inputType = currentInputType
+            initialSelStart = selectionStart
+            initialSelEnd = selectionEnd
+        }
+        latinIME.mHandler.onStartInput(editorInfo, false)
+        latinIME.mHandler.onStartInputView(editorInfo, false)
+        handleMessages()
+
+        functionalKeyPress(KeyCode.SHIFT)
+
+        assertEquals("Hello", text)
+        assertEquals(0, selectionStart)
+        assertEquals(5, selectionEnd)
+    }
+
+    @Test fun shiftIgnoresStaleInitialSelection() {
+        ShadowInputMethodService.text = "hello"
+        selectionStart = 0
+        selectionEnd = 0
+        composingStart = -1
+        composingEnd = -1
+        val editorInfo = EditorInfo().apply {
+            inputType = currentInputType
+            initialSelStart = 0
+            initialSelEnd = 5
+        }
+        latinIME.mHandler.onStartInput(editorInfo, false)
+        latinIME.mHandler.onStartInputView(editorInfo, false)
+        handleMessages()
+
+        latinIME.onEvent(Event.createSoftwareKeypressEvent(
+            Event.NOT_A_CODE_POINT, KeyCode.SHIFT, 0,
+            Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false))
+        handleMessages()
+
+        assertEquals("hello", text)
+        assertEquals(0, selectionStart)
+        assertEquals(0, selectionEnd)
+    }
+
     @Test fun noComposingForPasswordFields() {
         setInputType(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD)
         input('a')
@@ -404,6 +500,17 @@ class InputLogicTest {
         input('.')
         input('c')
         assertEquals("", composingText)
+    }
+
+    @Test fun classlessTextInputUsesTextDefaults() {
+        val classless = InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or
+                InputType.TYPE_TEXT_VARIATION_LONG_MESSAGE
+
+        setInputType(classless)
+
+        assertEquals(classless or InputType.TYPE_CLASS_TEXT,
+            settingsValues.mInputAttributes.mInputType)
+        assertEquals(true, settingsValues.mInputAttributes.mShouldShowSuggestions)
     }
 
     @Test fun `don't select whole thing as composing word if URL detection disabled`() {
@@ -557,6 +664,14 @@ class InputLogicTest {
         assertEquals("b", composingText)
     }
 
+    @Test fun `backspace consumes autospace after selecting a suggestion`() {
+        pickSuggestion("this")
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("this", text)
+        input('b')
+        assertEquals("thisb", text)
+    }
+
     @Test fun `autospace works in URL field when input isn't URL`() {
         latinIME.prefs().edit { putBoolean(Settings.PREF_URL_DETECTION, true) }
         setInputType(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI)
@@ -595,6 +710,14 @@ class InputLogicTest {
         chainInput("hello ")
         input("why 🤗 ") // not added because it's not only emoji (input can come from pasting)
         assertEquals("hello", lastAddedWord)
+    }
+
+    @Test fun emojiSuggestionIsAddedToRecents() {
+        RecentEmojis.set(listOf("🐕"))
+
+        pickSuggestion("🐈")
+
+        assertEquals(listOf("🐈", "🐕"), RecentEmojis.get().take(2))
     }
 
     @Test fun `emoji uses phantom space`() {
@@ -717,6 +840,13 @@ class InputLogicTest {
         assertEquals("\uD83E\uDEC6\uD83E\uDEC6", text)
     }
 
+    // https://github.com/HeliBorg/HeliBoard/issues/1793
+    @Test fun `skin tone emojis are deleted one by one`() {
+        input("🕵🏼🕵🏼🕵🏼")
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("🕵🏼🕵🏼", text)
+    }
+
     @Test fun `revert autocorrect on delete`() {
         setInputType(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_AUTO_CORRECT)
         chainInput("hullo")
@@ -800,6 +930,29 @@ class InputLogicTest {
         assertEquals(5, cursor)
     }
 
+    @Test fun suggestionSpansAreStoredOnlyAfterResuming() {
+        val typed = SuggestedWordInfo("hello", "", 0, 0, null, 0, 0)
+        val alternative = SuggestedWordInfo("help", "", 0, 0, null, 0, 0)
+        val suggestions = SuggestedWords(ArrayList(listOf(typed, alternative)), null, typed,
+            true, false, false, SuggestedWords.INPUT_STYLE_TYPING, 0)
+        fun committedSuggestionSpanCount() = ShadowInputMethodService.committedTexts
+            .first { it.toString().startsWith("hello") }
+            .let { (it as? Spanned)?.getSpans(0, it.length, SuggestionSpan::class.java)?.size ?: 0 }
+
+        chainInput("hello")
+        inputLogic.setSuggestedWords(suggestions)
+        ShadowInputMethodService.committedTexts.clear()
+        input(' ')
+        assertEquals(0, committedSuggestionSpanCount())
+
+        setText("hello")
+        assertEquals(true, composer.isResumed)
+        inputLogic.setSuggestedWords(suggestions)
+        ShadowInputMethodService.committedTexts.clear()
+        input(' ')
+        assertEquals(1, committedSuggestionSpanCount())
+    }
+
     // ------- helper functions ---------
 
     // should be called before every test, so the same state is guaranteed
@@ -842,7 +995,7 @@ class InputLogicTest {
         }
         assertEquals(oldAfter, textAfterCursor)
         assertEquals(textBeforeCursor + textAfterCursor, getTextFromConnection())
-        if (composer.isComposingWord && (oldIsAtEnd || composer.combiningSpec != "hangul"))
+        if (composer.isComposingWord && (oldIsAtEnd || composer.combiningSpec.isEmpty()))
             assertEquals(oldIsAtEnd, !composer.isCursorFrontOrMiddleOfComposingWord)
         checkConnectionConsistency()
     }

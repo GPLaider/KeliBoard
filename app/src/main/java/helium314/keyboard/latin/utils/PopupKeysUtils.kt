@@ -48,7 +48,16 @@ fun createPopupKeysArray(popupSet: PopupSet<*>?, params: KeyboardParams, label: 
         if (fco.substringAfter(Key.POPUP_KEYS_FIXED_COLUMN_ORDER).toIntOrNull() != fcoExpected)
             popupKeys.remove(fco) // maybe rather adjust the number instead of remove?
     }
-    if (popupKeys.size > 1 && (label == "(" || label == ")")) { // add fixed column order for that case (typically other variants of brackets / parentheses
+    val hintKey = getHintText(popupSet, params, label)
+    // Korean number hints intentionally keep double consonants as long-press defaults.
+    if (params.mId.locale.language != "ko" && hintKey != null && popupKeys.firstOrNull() != hintKey && popupKeys.remove(hintKey)) {
+        val remainingKeys = popupKeys.toList()
+        popupKeys.clear()
+        popupKeys.add(hintKey)
+        popupKeys.addAll(remainingKeys)
+    }
+    if (popupKeys.size > 1 && (label == "(" || label == ")")
+        && popupKeys.none { it.startsWith(Key.POPUP_KEYS_AUTO_COLUMN_ORDER) }) { // add fixed column order for that case (typically other variants of brackets / parentheses
         // not really fast, but no other way to add first in a LinkedHashSet
         val tmp = popupKeys.toList()
         popupKeys.clear()

@@ -70,9 +70,17 @@ class JniDataUtils {
         return attributeMap;
     }
 
+    static int sanitizeCodePointForOutput(const int codePoint, const bool preserveLineBreaks) {
+        if (codePoint >= 0x01 && codePoint <= 0x1F
+                && !(preserveLineBreaks && (codePoint == '\n' || codePoint == '\r'))) {
+            return CODE_POINT_REPLACEMENT_CHARACTER;
+        }
+        return codePoint;
+    }
+
     static void outputCodePoints(JNIEnv *env, jintArray intArrayToOutputCodePoints, const int start,
             const int maxLength, const int *const codePoints, const int codePointCount,
-            const bool needsNullTermination) {
+            const bool needsNullTermination, const bool preserveLineBreaks = false) {
         const int codePointBufSize = std::min(maxLength, codePointCount);
         int outputCodePonts[codePointBufSize];
         int outputCodePointCount = 0;
@@ -85,9 +93,8 @@ class JniDataUtils {
                     continue;
                 }
                 codePointToOutput = CODE_POINT_REPLACEMENT_CHARACTER;
-            } else if (codePoint >= 0x01 && codePoint <= 0x1F) {
-                // Control code.
-                codePointToOutput = CODE_POINT_REPLACEMENT_CHARACTER;
+            } else {
+                codePointToOutput = sanitizeCodePointForOutput(codePoint, preserveLineBreaks);
             }
             outputCodePonts[outputCodePointCount++] = codePointToOutput;
         }
@@ -150,7 +157,7 @@ class JniDataUtils {
  private:
     DISALLOW_IMPLICIT_CONSTRUCTORS(JniDataUtils);
 
-    static const int CODE_POINT_REPLACEMENT_CHARACTER;
+    static constexpr int CODE_POINT_REPLACEMENT_CHARACTER = 0xFFFD;
     static const int CODE_POINT_NULL;
 };
 } // namespace latinime

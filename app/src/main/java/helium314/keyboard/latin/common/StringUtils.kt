@@ -88,12 +88,14 @@ fun endsWithWordCodepoint(text: String, spacingAndPunctuations: SpacingAndPunctu
 
 // todo: simplify... maybe compare with original code?
 // todo: this breaks at e.g. э́, but should not
-fun getTouchedWordRange(before: CharSequence, after: CharSequence, script: String, spacingAndPunctuations: SpacingAndPunctuations): TextRange {
+fun getTouchedWordRange(before: CharSequence, after: CharSequence, script: String,
+                        spacingAndPunctuations: SpacingAndPunctuations, includeDigits: Boolean = false): TextRange {
     // Going backward, find the first breaking point (separator)
     var startIndexInBefore = before.length
     var endIndexInAfter = -1 // todo: clarify why might we want to set it when checking before
     loopOverCodePointsBackwards(before) { codePoint, cpLength ->
-        if (!isPartOfCompositionForScript(codePoint, spacingAndPunctuations, script)) {
+        if (!isPartOfCompositionForScript(codePoint, spacingAndPunctuations, script)
+            && !(includeDigits && Character.isDigit(codePoint))) {
             if (Character.isWhitespace(codePoint) || !spacingAndPunctuations.mCurrentLanguageHasSpaces)
                 return@loopOverCodePointsBackwards true
             // continue to the next whitespace and see whether this contains a sometimesWordConnector
@@ -120,7 +122,8 @@ fun getTouchedWordRange(before: CharSequence, after: CharSequence, script: Strin
     if (endIndexInAfter == -1) {
         endIndexInAfter = 0
         loopOverCodePoints(after) { codePoint, cpLength ->
-            if (!isPartOfCompositionForScript(codePoint, spacingAndPunctuations, script)) {
+            if (!isPartOfCompositionForScript(codePoint, spacingAndPunctuations, script)
+                && !(includeDigits && Character.isDigit(codePoint))) {
                 if (Character.isWhitespace(codePoint) || !spacingAndPunctuations.mCurrentLanguageHasSpaces)
                     return@loopOverCodePoints true
                 // continue to the next whitespace and see whether this contains a sometimesWordConnector
@@ -246,7 +249,7 @@ fun mightBeEmoji(text: CharSequence): Boolean {
 fun isEmoji(c: Int): Boolean = mightBeEmoji(c) && isEmoji(newSingleCodePointString(c))
 
 /** returns whether the text is a single emoji */
-fun isEmoji(text: CharSequence): Boolean = text.toString().isSingleGrapheme && mightBeEmoji(text) && text.matches(singleEmojiRegex)
+fun isEmoji(text: CharSequence): Boolean = mightBeEmoji(text) && text.matches(singleEmojiRegex)
 
 // from https://github.com/chattymin/Pebble/blob/main/pebble/src/main/java/com/chattymin/pebble/LocalBreakIterator.kt, Apache-2.0 license
 // there is more potentially useful code like String.graphemeLength (should be graphemeCount though)

@@ -754,7 +754,9 @@ public final class RichInputConnection implements PrivateCommandPerformer {
 
     public void selectAll() {
         if (!isConnected()) return;
-        if (mExpectedSelStart != mExpectedSelEnd && mExpectedSelStart == 0 && !hasTextAfterCursor()) { // all text already selected
+        final CharSequence after = getTextAfterCursor(1, 0);
+        if (mExpectedSelStart != mExpectedSelEnd && mExpectedSelStart == 0
+                && after != null && after.length() == 0) { // all text already selected
             mIC.setSelection(mExpectedSelEnd, mExpectedSelEnd);
         } else mIC.performContextMenuAction(android.R.id.selectAll);
     }
@@ -765,12 +767,19 @@ public final class RichInputConnection implements PrivateCommandPerformer {
             mIC.setSelection(mExpectedSelEnd, mExpectedSelEnd);
             return;
         }
-        final TextRange range = getWordRangeAtCursor(spacingAndPunctuations, script);
+        final TextRange range = getWordRangeAtCursor(spacingAndPunctuations, script, true);
         if (range == null) return;
         mIC.setSelection(mExpectedSelStart - range.getNumberOfCharsInWordBeforeCursor(), mExpectedSelStart + range.getNumberOfCharsInWordAfterCursor());
     }
 
     public void copyText(final boolean getSelection) {
+        if (getSelection && hasSelection() && isConnected()
+                && mIC.performContextMenuAction(android.R.id.copy)) {
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
+                KeyboardSwitcher.getInstance().showToast(mParent.getString(R.string.toast_msg_clipboard_copy), true);
+            }
+            return;
+        }
         CharSequence text = null;
         if (getSelection) {
             // copy selected text, and if nothing is selected copy the whole text
@@ -859,6 +868,11 @@ public final class RichInputConnection implements PrivateCommandPerformer {
      */
     @Nullable public TextRange getWordRangeAtCursor(final SpacingAndPunctuations spacingAndPunctuations,
             final String script) {
+        return getWordRangeAtCursor(spacingAndPunctuations, script, false);
+    }
+
+    @Nullable public TextRange getWordRangeAtCursor(final SpacingAndPunctuations spacingAndPunctuations,
+            final String script, final boolean includeDigits) {
         mIC = mParent.getCurrentInputConnection();
         if (!isConnected()) {
             return null;
@@ -876,7 +890,7 @@ public final class RichInputConnection implements PrivateCommandPerformer {
         if (before == null || after == null) {
             return null;
         }
-        return StringUtilsKt.getTouchedWordRange(before, after, script, spacingAndPunctuations);
+        return StringUtilsKt.getTouchedWordRange(before, after, script, spacingAndPunctuations, includeDigits);
     }
 
     public boolean isCursorTouchingWord(final SpacingAndPunctuations spacingAndPunctuations,

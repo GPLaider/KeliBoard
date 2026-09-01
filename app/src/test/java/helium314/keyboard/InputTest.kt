@@ -3,13 +3,16 @@ package helium314.keyboard
 import android.Manifest
 import android.app.KeyguardManager
 import android.content.ClipData
+import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.ContentProvider
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.ContentValues
+import android.content.Intent
 import android.content.pm.ProviderInfo
 import android.database.MatrixCursor
+import android.graphics.Paint
 import android.net.Uri
 import android.provider.MediaStore
 import android.text.InputType
@@ -23,20 +26,26 @@ import android.widget.TextView
 import helium314.keyboard.event.Event
 import helium314.keyboard.keyboard.KeyboardElement
 import helium314.keyboard.keyboard.KeyboardSwitcher
+import helium314.keyboard.keyboard.MainKeyboardView
+import helium314.keyboard.keyboard.emoji.EmojiSearchActivity
 import helium314.keyboard.keyboard.internal.keyboard_parser.LayoutParser
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.ClipboardHistoryManager
 import helium314.keyboard.latin.LatinIME
 import helium314.keyboard.latin.R
+import helium314.keyboard.latin.RichInputMethodSubtype
 import helium314.keyboard.latin.RichInputMethodManager
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.settings.SettingsSubtype
+import helium314.keyboard.latin.suggestions.SuggestionStripView
 import helium314.keyboard.latin.utils.LayoutType
 import helium314.keyboard.latin.utils.LayoutUtilsCustom
 import helium314.keyboard.latin.utils.SubtypeUtilsAdditional
+import helium314.keyboard.latin.utils.SubtypeLocaleUtils
 import helium314.keyboard.latin.utils.ToolbarMode
 import helium314.keyboard.latin.utils.prefs
 import org.junit.runner.RunWith
+import org.mockito.Mockito
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
@@ -76,6 +85,107 @@ class InputTest {
         assertEquals(KeyboardElement.ALPHABET, keyboardSwitcher.keyboard?.mId?.element)
         touchKey(KeyCode.SHIFT, MotionEvent.ACTION_DOWN)
         assertEquals(KeyboardElement.ALPHABET_MANUAL_SHIFTED, keyboardSwitcher.keyboard?.mId?.element)
+    }
+
+    // https://github.com/HeliBorg/HeliBoard/issues/2420
+    @Test fun shiftModifiesNavigationAndCtrlShortcut() {
+        val listener = latinIME.mKeyboardActionListener
+        val clipboard = latinIME.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("copied text", "paste"))
+        try {
+            listener.onCodeInput(KeyCode.CTRL, 0, 0, false)
+            touchKey(KeyCode.SHIFT, MotionEvent.ACTION_DOWN)
+            touchKey(KeyCode.SHIFT, MotionEvent.ACTION_UP)
+            listener.onCodeInput('V'.code, 0, 0, false)
+            assertEquals("paste", ShadowInputMethodService.text)
+        } finally {
+            clipboard.clearPrimaryClip()
+        }
+
+        assertTrue(keyboardSwitcher.keyboard!!.mId.element.isAlphabetShiftedManually)
+        listener.onCodeInput(KeyCode.ARROW_RIGHT, 0, 0, false)
+        assertTrue(ShadowInputMethodService.lastKeyEvent!!.metaState and KeyEvent.META_SHIFT_ON != 0)
+
+        listener.onHorizontalSpaceSwipe(1)
+        assertEquals(KeyEvent.KEYCODE_DPAD_RIGHT, ShadowInputMethodService.lastKeyEvent!!.keyCode)
+        assertTrue(ShadowInputMethodService.lastKeyEvent!!.metaState and KeyEvent.META_SHIFT_ON != 0)
+    }
+
+    // https://github.com/HeliBorg/HeliBoard/issues/2335
+    @Test fun spaceSwipeFollowsNearbyTextDirectionInsteadOfKeyboardLanguage() {
+        val fallback = SettingsSubtype.fallbackSubtype.toAdditionalSubtype()
+        val arabic = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(
+            Locale.forLanguageTag("ar"), "arabic", false
+        )
+        try {
+            RichInputMethodManager.forceSubtype(arabic)
+            ShadowInputMethodService.text = "abc"
+            ShadowInputMethodService.selectionStart = 1
+            ShadowInputMethodService.selectionEnd = 1
+            val editorInfo = EditorInfo().apply {
+                inputType = InputType.TYPE_CLASS_TEXT
+                initialSelStart = 1
+                initialSelEnd = 1
+            }
+            latinIME.onStartInputView(editorInfo, false)
+            latinIME.onUpdateSelection(1, 1, 1, 1, -1, -1)
+            ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+
+            latinIME.mKeyboardActionListener.onHorizontalSpaceSwipe(1)
+
+            assertEquals(2, ShadowInputMethodService.selectionStart)
+            assertEquals(2, ShadowInputMethodService.selectionEnd)
+
+            ShadowInputMethodService.text = "ابت"
+            ShadowInputMethodService.selectionStart = 1
+            ShadowInputMethodService.selectionEnd = 1
+            latinIME.onUpdateSelection(2, 2, 1, 1, -1, -1)
+            ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+            latinIME.mKeyboardActionListener.onHorizontalSpaceSwipe(1)
+            assertEquals(0, ShadowInputMethodService.selectionStart)
+            assertEquals(0, ShadowInputMethodService.selectionEnd)
+        } finally {
+            RichInputMethodManager.forceSubtype(fallback)
+            keyboardSwitcher.reloadMainKeyboard()
+        }
+    }
+
+    @Test fun alphaKeyReturnsFromExternallyOpenedEmojiKeyboard() {
+        keyboardSwitcher.setEmojiKeyboard()
+        assertEquals(View.VISIBLE, keyboardSwitcher.emojiPalettesView.visibility)
+
+        latinIME.mKeyboardActionListener.onCodeInput(KeyCode.ALPHA, 0, 0, false)
+
+        assertEquals(View.GONE, keyboardSwitcher.emojiPalettesView.visibility)
+        assertEquals(KeyboardElement.ALPHABET, keyboardSwitcher.keyboard?.mId?.element)
+    }
+
+    // https://github.com/HeliBorg/HeliBoard/issues/2277
+    @Test fun incognitoLayoutKeyShowsEnabledState() {
+        val prefs = latinIME.prefs()
+        val oldIncognito = prefs.getBoolean(Settings.PREF_ALWAYS_INCOGNITO_MODE, false)
+        val originalView = keyboardSwitcher.mainKeyboardView
+        val keyboardView = Mockito.mock(MainKeyboardView::class.java)
+        try {
+            prefs.edit().putBoolean(Settings.PREF_ALWAYS_INCOGNITO_MODE, false).commit()
+            ReflectionHelpers.setField(keyboardSwitcher, "mKeyboardView", keyboardView)
+
+            latinIME.mKeyboardActionListener.onCodeInput(
+                KeyCode.TOGGLE_INCOGNITO_MODE, 0, 0, false
+            )
+
+            Mockito.verify(keyboardView)
+                .updateLockState(KeyCode.TOGGLE_INCOGNITO_MODE, true)
+
+            latinIME.mKeyboardActionListener.onCodeInput(
+                KeyCode.TOGGLE_INCOGNITO_MODE, 0, 0, false
+            )
+            Mockito.verify(keyboardView)
+                .updateLockState(KeyCode.TOGGLE_INCOGNITO_MODE, false)
+        } finally {
+            ReflectionHelpers.setField(keyboardSwitcher, "mKeyboardView", originalView)
+            prefs.edit().putBoolean(Settings.PREF_ALWAYS_INCOGNITO_MODE, oldIncognito).commit()
+        }
     }
 
     @Test fun keyInput() {
@@ -164,6 +274,9 @@ class InputTest {
 
     @Test fun securePasswordAndLockscreenUseShiftableQwerty() {
         val keyguard = latinIME.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        val prefs = latinIME.prefs()
+        val oldToolbarMode = prefs.getString(Settings.PREF_TOOLBAR_MODE, null)
+        val oldIncognito = prefs.getBoolean(Settings.PREF_ALWAYS_INCOGNITO_MODE, false)
         val editorInfo = EditorInfo().apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             imeOptions = EditorInfo.IME_FLAG_FORCE_ASCII
@@ -174,6 +287,10 @@ class InputTest {
         val fallback = SettingsSubtype.fallbackSubtype.toAdditionalSubtype()
 
         try {
+            prefs.edit()
+                .putString(Settings.PREF_TOOLBAR_MODE, ToolbarMode.EXPANDABLE.name)
+                .putBoolean(Settings.PREF_ALWAYS_INCOGNITO_MODE, false)
+                .commit()
             RichInputMethodManager.forceSubtype(korean)
             ShadowInputMethodService.currentInputType = editorInfo.inputType
             ShadowInputMethodService.currentImeOptions = editorInfo.imeOptions
@@ -196,9 +313,68 @@ class InputTest {
             assertNotNull(keyboard.getKey(KeyCode.SHIFT))
             touchKey(KeyCode.SHIFT, MotionEvent.ACTION_DOWN)
             assertEquals(KeyboardElement.ALPHABET_MANUAL_SHIFTED, keyboardSwitcher.keyboard?.mId?.element)
+
+            // https://github.com/HeliBorg/HeliBoard/issues/2642
+            shadowOf(keyguard).setIsDeviceLocked(false)
+            latinIME.onStartInputView(editorInfo, true)
+            ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+            assertFalse(Settings.getValues().mIsLocked)
+            assertEquals(ToolbarMode.EXPANDABLE, Settings.getValues().mToolbarMode)
+            assertTrue(latinIME.hasSuggestionStripView())
+
+            val normalEditorInfo = EditorInfo().apply { inputType = InputType.TYPE_CLASS_TEXT }
+            ShadowInputMethodService.currentInputType = normalEditorInfo.inputType
+            ShadowInputMethodService.currentImeOptions = normalEditorInfo.imeOptions
+            latinIME.onStartInputView(normalEditorInfo, false)
+            ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+            assertFalse(Settings.getValues().mIncognitoModeEnabled)
         } finally {
             RichInputMethodManager.forceSubtype(fallback)
             shadowOf(keyguard).setIsDeviceLocked(false)
+            prefs.edit()
+                .putString(Settings.PREF_TOOLBAR_MODE, oldToolbarMode)
+                .putBoolean(Settings.PREF_ALWAYS_INCOGNITO_MODE, oldIncognito)
+                .commit()
+        }
+    }
+
+    @Test fun noLanguageSpacebarUsesLayoutName() {
+        val subtype = RichInputMethodSubtype.get(
+            SettingsSubtype(Locale.forLanguageTag(SubtypeLocaleUtils.NO_LANGUAGE), "")
+                .withLayout(LayoutType.MAIN, "qwerty")
+                .toAdditionalSubtype()
+        )
+
+        val text = ReflectionHelpers.callInstanceMethod<String>(
+            keyboardSwitcher.mainKeyboardView,
+            "layoutLanguageOnSpacebar",
+            ReflectionHelpers.ClassParameter.from(Paint::class.java, Paint()),
+            ReflectionHelpers.ClassParameter.from(RichInputMethodSubtype::class.java, subtype),
+            ReflectionHelpers.ClassParameter.from(Int::class.javaPrimitiveType!!, 1_000),
+        )
+
+        assertEquals(SubtypeLocaleUtils.getMainLayoutDisplayName("qwerty"), text)
+    }
+
+    // https://github.com/HeliBorg/HeliBoard/issues/2639
+    @Test fun noLanguageShiftTypesUppercase() {
+        val fallback = SettingsSubtype.fallbackSubtype.toAdditionalSubtype()
+        val subtype = SettingsSubtype(Locale.forLanguageTag(SubtypeLocaleUtils.NO_LANGUAGE), "")
+            .withLayout(LayoutType.MAIN, "qwerty")
+            .toAdditionalSubtype()
+        try {
+            RichInputMethodManager.forceSubtype(subtype)
+            latinIME.onStartInputView(EditorInfo().apply { inputType = InputType.TYPE_CLASS_TEXT }, false)
+            ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+
+            touchKey(KeyCode.SHIFT, MotionEvent.ACTION_DOWN)
+            touchKey(KeyCode.SHIFT, MotionEvent.ACTION_UP)
+            touchKey('F'.code, MotionEvent.ACTION_DOWN, 50L)
+            touchKey('F'.code, MotionEvent.ACTION_UP, 50L)
+
+            assertEquals("F", ShadowInputMethodService.text)
+        } finally {
+            RichInputMethodManager.forceSubtype(fallback)
         }
     }
 
@@ -265,20 +441,127 @@ class InputTest {
         }
     }
 
+    @Test fun toolbarStaysVisibleWhenSuggestionStripViewReturns() {
+        val root = keyboardSwitcher.stripContainer.rootView
+        val strip = root.findViewById<SuggestionStripView>(R.id.suggestion_strip_view)
+        val toolbar = strip.findViewById<View>(R.id.toolbar_container)
+        val suggestions = strip.findViewById<View>(R.id.suggestions_strip)
+
+        try {
+            strip.setToolbarVisibility(true)
+            ReflectionHelpers.callInstanceMethod<Any?>(
+                strip,
+                "onVisibilityChanged",
+                ReflectionHelpers.ClassParameter.from(View::class.java, strip),
+                ReflectionHelpers.ClassParameter.from(Int::class.javaPrimitiveType!!, View.VISIBLE),
+            )
+
+            assertEquals(View.VISIBLE, toolbar.visibility)
+            assertEquals(View.GONE, suggestions.visibility)
+        } finally {
+            strip.setToolbarVisibility(false)
+            strip.visibility = View.VISIBLE
+        }
+    }
+
+    @Test fun emojiSearchResultWaitsForHostEditor() {
+        ShadowInputMethodService.currentPrivateImeOptions =
+            "helium314.keyboard.keyboard.emoji.search.300,"
+        val result = Intent(EmojiSearchActivity.EMOJI_SEARCH_DONE_ACTION)
+            .putExtra(EmojiSearchActivity.EMOJI_KEY, "😀")
+
+        latinIME.onStartCommand(result, 0, 42)
+        assertEquals("", ShadowInputMethodService.text)
+
+        ShadowInputMethodService.currentPrivateImeOptions = null
+        latinIME.onStartInputView(EditorInfo(), false)
+        assertEquals("😀", ShadowInputMethodService.text)
+    }
+
     @Test fun pasteKeyAndCtrlVCommitPlainTextClipboard() {
         val clipboard = latinIME.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("copied text", "붙여넣기 테스트"))
+        val copiedText = "붙여넣기\n테스트"
+        clipboard.setPrimaryClip(ClipData.newPlainText("copied text", copiedText))
         try {
             latinIME.mKeyboardActionListener.onCodeInput(
                 KeyCode.CLIPBOARD_PASTE, 0, 0, false
             )
-            assertEquals("붙여넣기 테스트", ShadowInputMethodService.text)
+            assertEquals(copiedText, ShadowInputMethodService.text)
 
             ShadowInputMethodService.reset()
             latinIME.onEvent(Event.createSoftwareKeypressEvent(
                 'v'.code, Event.NOT_A_KEY_CODE, KeyEvent.META_CTRL_ON, 0, 0, false
             ))
-            assertEquals("붙여넣기 테스트", ShadowInputMethodService.text)
+            assertEquals(copiedText, ShadowInputMethodService.text)
+        } finally {
+            clipboard.clearPrimaryClip()
+        }
+    }
+
+    @Test fun toolbarCopyDelegatesLongSelectionToEditor() {
+        val selected = "긴 선택문".repeat(50_000)
+        ShadowInputMethodService.text = selected
+        ShadowInputMethodService.selectionStart = 0
+        ShadowInputMethodService.selectionEnd = selected.length
+        ShadowInputMethodService.selectedTextLimit = 32
+        latinIME.onUpdateSelection(0, 0, 0, selected.length, -1, -1)
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+
+        latinIME.mKeyboardActionListener.onCodeInput(KeyCode.CLIPBOARD_COPY, 0, 0, false)
+
+        assertEquals(android.R.id.copy, ShadowInputMethodService.lastContextMenuAction)
+        assertEquals(selected, ShadowInputMethodService.contextMenuCopiedText)
+    }
+
+    @Test fun selectAllDelegatesWhenTextAfterCursorIsUnavailable() {
+        ShadowInputMethodService.text = "first second"
+        ShadowInputMethodService.selectionStart = 0
+        ShadowInputMethodService.selectionEnd = 5
+        ShadowInputMethodService.textAfterCursorAvailable = false
+        latinIME.onUpdateSelection(0, 0, 0, 5, -1, -1)
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+
+        latinIME.mKeyboardActionListener.onCodeInput(KeyCode.CLIPBOARD_SELECT_ALL, 0, 0, false)
+
+        assertEquals(android.R.id.selectAll, ShadowInputMethodService.lastContextMenuAction)
+        assertEquals("first second", ShadowInputMethodService.selectedText)
+    }
+
+    @Test fun selectWordIncludesDigits() {
+        ShadowInputMethodService.text = "I ran 1500m"
+        ShadowInputMethodService.selectionStart = 8
+        ShadowInputMethodService.selectionEnd = 8
+        latinIME.onUpdateSelection(0, 0, 8, 8, -1, -1)
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+
+        latinIME.mKeyboardActionListener.onCodeInput(KeyCode.CLIPBOARD_SELECT_WORD, 0, 0, false)
+
+        assertEquals("1500m", ShadowInputMethodService.selectedText)
+    }
+
+    @Test fun backspaceDeletesSelectedText() {
+        ShadowInputMethodService.text = "keep delete keep"
+        ShadowInputMethodService.selectionStart = 5
+        ShadowInputMethodService.selectionEnd = 11
+        latinIME.onUpdateSelection(0, 0, 5, 11, -1, -1)
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+
+        latinIME.mKeyboardActionListener.onCodeInput(KeyCode.DELETE, 0, 0, false)
+
+        assertEquals("keep  keep", ShadowInputMethodService.text)
+    }
+
+    @Test fun pasteKeyCommitsTextItemWithNonTextMimeType() {
+        val clipboard = latinIME.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData(
+            ClipDescription("terminal clipboard", arrayOf("application/x-terminal-text")),
+            ClipData.Item("terminal paste")
+        ))
+        try {
+            latinIME.mKeyboardActionListener.onCodeInput(
+                KeyCode.CLIPBOARD_PASTE, 0, 0, false
+            )
+            assertEquals("terminal paste", ShadowInputMethodService.text)
         } finally {
             clipboard.clearPrimaryClip()
         }
@@ -297,6 +580,11 @@ class InputTest {
         assertFalse(ClipboardHistoryManager.canSuggestRecentScreenshot(
             false, InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
         ))
+    }
+
+    @Test fun clipboardHistoryDoesNotCrossAndroidProfiles() {
+        assertFalse(ClipboardHistoryManager.isCrossProfileClient(12_345, 23_456))
+        assertTrue(ClipboardHistoryManager.isCrossProfileClient(112_345, 23_456))
     }
 
     @Test fun recentGalleryScreenshotAppearsButNotInPasswordFields() {

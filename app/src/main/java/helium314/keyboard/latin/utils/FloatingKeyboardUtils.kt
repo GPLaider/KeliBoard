@@ -148,10 +148,12 @@ object FloatingKeyboardUtils {
                     val availableHeight = windowFrame.bottom - windowFrame.top
                     val maxWidth = (availableWidth * 0.9f).toInt()
                     val maxHeight = (availableHeight * 0.9f).toInt()
+                    val minWidth = resources.getDimensionPixelSize(R.dimen.config_floating_min_width).coerceAtMost(maxWidth)
+                    val minHeight = resources.getDimensionPixelSize(R.dimen.config_floating_min_height).coerceAtMost(maxHeight)
                     // avoid setting window outside windowFrame, view behaves strange otherwise
-                    val newWidth = (Settings.getValues().mFloatingWidth + dx / scale).toInt().coerceIn(150, maxWidth)
+                    val newWidth = (Settings.getValues().mFloatingWidth + dx / scale).toInt().coerceIn(minWidth, maxWidth)
                         .coerceAtMost(availableWidth - lp.leftMargin)
-                    val newHeight = (Settings.getValues().mFloatingHeight + dy / scale).toInt().coerceIn(100, maxHeight)
+                    val newHeight = (Settings.getValues().mFloatingHeight + dy / scale).toInt().coerceIn(minHeight, maxHeight)
                         .coerceAtMost(availableHeight - extraHeight.toInt() - lp.topMargin)
                     setFloatingSize(context, newWidth, newHeight)
                     KeyboardSwitcher.getInstance().reloadKeyboard()

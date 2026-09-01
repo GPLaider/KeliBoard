@@ -149,9 +149,7 @@ class KeyboardState(private val switchActions: SwitchActions) {
             Log.d(TAG, "resetToAlpha: ${stateToString(autoCapsFlags, recapitalizeMode)}")
         }
         prevLayouts.wipe()
-        if (mode == Mode.ALPHABET) {
-            return
-        }
+        // The visible keyboard may have been changed outside this state machine.
         loadLayout(Alphabet(shiftMode, autoCapsFlags, recapitalizeMode))
     }
 

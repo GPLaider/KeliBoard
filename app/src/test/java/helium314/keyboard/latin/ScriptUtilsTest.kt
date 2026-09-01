@@ -12,6 +12,7 @@ import kotlin.test.assertEquals
 class ScriptUtilsTest {
     @Test fun defaultScript() {
         assertEquals(SCRIPT_LATIN, "en".constructLocale().script())
+        assertEquals(SCRIPT_LATIN, "zz".constructLocale().script())
         assertEquals(SCRIPT_DEVANAGARI, "hi".constructLocale().script())
         assertEquals(SCRIPT_LATIN, "hi_zz".constructLocale().script())
         assertEquals(SCRIPT_LATIN, "sr-Latn".constructLocale().script())

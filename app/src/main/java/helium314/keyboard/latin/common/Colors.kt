@@ -266,7 +266,7 @@ class DynamicColors(context: Context, override val themeStyle: String, override 
         actionKeyIconColorFilter = when {
             themeStyle == STYLE_HOLO -> keyTextFilter
             // the white icon may not have enough contrast, and can't be adjusted by the user
-            isBrightColor(accent) -> colorFilter(Color.DKGRAY)
+            needsDarkActionKeyIcon(accent) -> colorFilter(Color.DKGRAY)
             else -> null
         }
     }
@@ -469,7 +469,7 @@ class DefaultColors (
         actionKeyIconColorFilter = when {
             themeStyle == STYLE_HOLO -> keyTextFilter
             // the white icon may not have enough contrast, and can't be adjusted by the user
-            isBrightColor(accent) -> colorFilter(Color.DKGRAY)
+            needsDarkActionKeyIcon(accent) -> colorFilter(Color.DKGRAY)
             else -> null
         }
     }
@@ -608,6 +608,9 @@ private fun colorFilter(color: Int, mode: BlendModeCompat = BlendModeCompat.MODU
     // using !! for the color filter because null is only returned for unsupported blend modes, which are not used
     return BlendModeColorFilterCompat.createBlendModeColorFilterCompat(color, mode)!!
 }
+
+internal fun needsDarkActionKeyIcon(@ColorInt background: Int) =
+    ColorUtils.calculateContrast(Color.WHITE, background) < 3.0
 
 private fun pressedStateList(pressed: Int, normal: Int): ColorStateList {
     val states = arrayOf(intArrayOf(android.R.attr.state_pressed), intArrayOf(-android.R.attr.state_pressed))

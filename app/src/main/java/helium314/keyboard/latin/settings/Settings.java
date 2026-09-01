@@ -346,9 +346,11 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
         return res.getInteger(R.integer.config_gesture_static_time_threshold_after_fast_typing);
     }
 
-    public void toggleAlwaysIncognitoMode() {
+    public boolean toggleAlwaysIncognitoMode() {
         final boolean oldValue = mPrefs.getBoolean(Settings.PREF_ALWAYS_INCOGNITO_MODE, Defaults.PREF_ALWAYS_INCOGNITO_MODE);
-        mPrefs.edit().putBoolean(Settings.PREF_ALWAYS_INCOGNITO_MODE, !oldValue).apply();
+        final boolean newValue = !oldValue;
+        mPrefs.edit().putBoolean(Settings.PREF_ALWAYS_INCOGNITO_MODE, newValue).apply();
+        return newValue;
     }
 
     public static ToolbarMode readToolbarMode(final SharedPreferences prefs) {

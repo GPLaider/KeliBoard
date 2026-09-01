@@ -121,6 +121,19 @@ public class InlineAutofillUtils {
         return scrollableSuggestionsClip;
     }
 
+    public static void setInlineSuggestionsOnTop(@Nullable final View root, final boolean onTop) {
+        if (root == null) return;
+        if (root instanceof InlineContentView inlineContentView) {
+            inlineContentView.setZOrderedOnTop(onTop);
+            return;
+        }
+        if (root instanceof ViewGroup rootGroup) {
+            for (int i = 0; i < rootGroup.getChildCount(); i++) {
+                setInlineSuggestionsOnTop(rootGroup.getChildAt(i), onTop);
+            }
+        }
+    }
+
     /**
      * This class is a container for showing {@link InlineContentView}s for cases
      * where you want to ensure they appear only in a given area in your app. An

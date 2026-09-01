@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.provider.Settings.Global
 import androidx.core.content.edit
+import helium314.keyboard.latin.R
 import helium314.keyboard.latin.utils.prefs
 import kotlinx.serialization.json.Json
 
@@ -43,12 +44,14 @@ fun readFloatingHeight(context: Context): Int {
     val screenWidth = context.resources.displayMetrics.widthPixels
     val key = Settings.PREF_FLOATING_HEIGHT_PREFIX + screenWidth
     return context.prefs().getInt(key, context.resources.displayMetrics.heightPixels / 3)
+        .coerceAtLeast(context.resources.getDimensionPixelSize(R.dimen.config_floating_min_height))
 }
 
 fun readFloatingWidth(context: Context): Int {
     val screenWidth = context.resources.displayMetrics.widthPixels
     val key = Settings.PREF_FLOATING_WIDTH_PREFIX + screenWidth
     return context.prefs().getInt(key, screenWidth / 2)
+        .coerceAtLeast(context.resources.getDimensionPixelSize(R.dimen.config_floating_min_width))
 }
 
 fun setFloatingSize(context: Context, width: Int, height: Int) {

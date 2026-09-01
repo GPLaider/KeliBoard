@@ -21,6 +21,7 @@ import androidx.annotation.NonNull;
 
 import helium314.keyboard.accessibility.AccessibilityUtils;
 import helium314.keyboard.accessibility.PopupKeysKeyboardAccessibilityDelegate;
+import helium314.keyboard.event.HapticEvent;
 import helium314.keyboard.keyboard.emoji.EmojiViewCallback;
 import helium314.keyboard.keyboard.internal.KeyDrawParams;
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode;
@@ -232,6 +233,12 @@ public class PopupKeysKeyboardView extends KeyboardView implements PopupKeysPane
     protected void onKeyInput(final Key key, final int x, final int y) {
         if (mListener != null) {
             final int code = key.getCode();
+            final boolean isLockKey = code == KeyCode.CAPS_LOCK || code == KeyCode.CTRL_LOCK
+                    || code == KeyCode.ALT_LOCK || code == KeyCode.FN_LOCK
+                    || code == KeyCode.META_LOCK;
+            if (isLockKey) {
+                mListener.onPressKey(code, 0, 1, HapticEvent.NO_HAPTICS);
+            }
             if (code == KeyCode.MULTIPLE_CODE_POINTS) {
                 mListener.onTextInput(mCurrentKey.getOutputText());
             } else if (code != KeyCode.NOT_SPECIFIED) {
@@ -241,6 +248,9 @@ public class PopupKeysKeyboardView extends KeyboardView implements PopupKeysPane
                     mListener.onCodeInput(code, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE,
                             false /* isKeyRepeat */);
                 }
+            }
+            if (isLockKey) {
+                mListener.onReleaseKey(code, false);
             }
         } else if (mEmojiViewCallback != null) {
             mEmojiViewCallback.onReleaseKey(key);

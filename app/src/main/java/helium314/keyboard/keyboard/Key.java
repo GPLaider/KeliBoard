@@ -1095,7 +1095,8 @@ public class Key implements Comparable<Key> {
             mIconName = KeySpecParser.getIconName(keySpec) ;
 
             boolean needsToUpcase = needsToUpcase(mLabelFlags, params.mId.getElement());
-            Locale localeForUpcasing = params.mId.getLocale();
+            Locale localeForUpcasing = params.mId.getSubtype().isNoLanguage()
+                    ? Locale.US : params.mId.getLocale();
             int actionFlags = 0;
             if (params.mId.getElement().isNumberLayout())
                 actionFlags = ACTION_FLAGS_NO_KEY_PREVIEW;
@@ -1117,7 +1118,10 @@ public class Key implements Comparable<Key> {
             }
 
             // popupKeys
-            final String[] popupKeys = PopupKeysUtilsKt.createPopupKeysArray(popupSet, mKeyboardParams, label != null ? label : keySpec);
+            final String explicitOutputText = KeySpecParser.getExplicitOutputText(keySpec);
+            final String popupLookupKey = TextUtils.isEmpty(explicitOutputText)
+                    ? label != null ? label : keySpec : explicitOutputText;
+            final String[] popupKeys = PopupKeysUtilsKt.createPopupKeysArray(popupSet, mKeyboardParams, popupLookupKey);
             final Map<String, Integer> popupKeyLabelFlags = PopupKeysUtilsKt.getPopupKeyLabelFlags(popupSet, mKeyboardParams);
             mPopupKeysColumnAndFlags = getPopupKeysColumnAndFlagsAndSetNullInArray(params, popupKeys);
             final String[] finalPopupKeys = popupKeys == null ? null : PopupKeySpec.filterOutEmptyString(popupKeys);

@@ -13,6 +13,7 @@ import android.text.TextUtils;
 
 import helium314.keyboard.latin.App;
 import helium314.keyboard.latin.BuildConfig;
+import helium314.keyboard.latin.common.FileUtils;
 import helium314.keyboard.latin.settings.Settings;
 
 import java.io.File;
@@ -62,6 +63,13 @@ public final class JniUtils {
                 userSuppliedLibrary = null;
         } catch (Exception e) {
             userSuppliedLibrary = null;
+        }
+        if (!BuildConfig.BUILD_TYPE.equals("nouserlib") && userSuppliedLibrary != null) {
+            if (!FileUtils.isElfFile(userSuppliedLibrary)) {
+                //noinspection ResultOfMethodCallIgnored
+                userSuppliedLibrary.delete();
+                userSuppliedLibrary = null;
+            }
         }
         if (!BuildConfig.BUILD_TYPE.equals("nouserlib") && userSuppliedLibrary != null) {
             String wantedChecksum = expectedDefaultChecksum();

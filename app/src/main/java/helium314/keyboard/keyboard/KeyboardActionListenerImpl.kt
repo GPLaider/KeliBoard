@@ -107,7 +107,8 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
         when (primaryCode) {
             KeyCode.TOGGLE_AUTOCORRECT -> return settings.toggleAutoCorrect()
             KeyCode.TOGGLE_INCOGNITO_MODE -> {
-                settings.toggleAlwaysIncognitoMode()
+                val enabled = settings.toggleAlwaysIncognitoMode()
+                keyboardSwitcher.mainKeyboardView?.updateLockState(primaryCode, enabled)
                 BackgroundGatheringCache.clear()
                 latinIME.setGestureDataGatheringMode(latinIME.currentInputEditorInfo, false)
                 return
@@ -135,18 +136,15 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
         if (Settings.getValues().mIsLocked && KeyCode.isIsBlockedWhenLocked(primaryCode))
             return
         val mkv = keyboardSwitcher.mainKeyboardView
+        val eventMetaState = if (mkv.keyboard?.mId?.element?.isAlphabetShiftedManually == true
+            && (metaState != 0 || primaryCode.isSelectionNavigationKey())
+        ) metaState or KeyEvent.META_SHIFT_ON else metaState
 
         // checking if the character is a combining accent
         val event = if (primaryCode in combiningRange) { // todo: should this be done later, maybe in inputLogic?
-            Event.createSoftwareDeadEvent(primaryCode, 0, metaState, mkv.getKeyX(x), mkv.getKeyY(y), null)
+            Event.createSoftwareDeadEvent(primaryCode, 0, eventMetaState, mkv.getKeyX(x), mkv.getKeyY(y), null)
         } else {
-            // todo:
-            //  setting meta shift should only be done for arrow and similar cursor movement keys
-            //  should only be enabled once it works more reliably (currently depends on app for some reason)
-//            if (mkv.keyboard?.mId?.isAlphabetShiftedManually == true)
-//                Event.createSoftwareKeypressEvent(primaryCode, metaState or KeyEvent.META_SHIFT_ON, mkv.getKeyX(x), mkv.getKeyY(y), isKeyRepeat)
-//            else Event.createSoftwareKeypressEvent(primaryCode, metaState, mkv.getKeyX(x), mkv.getKeyY(y), isKeyRepeat)
-            Event.createSoftwareKeypressEvent(primaryCode, metaState, mkv.getKeyX(x), mkv.getKeyY(y), isKeyRepeat)
+            Event.createSoftwareKeypressEvent(primaryCode, eventMetaState, mkv.getKeyX(x), mkv.getKeyY(y), isKeyRepeat)
         }
         latinIME.onEvent(event)
         metaAfterCodeInput(primaryCode)
@@ -321,8 +319,17 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
 
     private fun onMoveCursorHorizontally(rawSteps: Int): Boolean {
         if (rawSteps == 0) return false
-        // for RTL languages we want to invert pointer movement
-        val rtl = RichInputMethodManager.getInstance().currentSubtype.isRtlSubtype
+        if (keyboardSwitcher.keyboard?.mId?.element?.isAlphabetShiftedManually == true) {
+            inputLogic.finishInput()
+            if (rawSteps < 0) gestureMoveBackHaptics() else gestureMoveForwardHaptics()
+            val keyCode = if (rawSteps < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
+            repeat(abs(rawSteps)) {
+                inputLogic.sendDownUpKeyEventWithMetaState(keyCode, metaState or KeyEvent.META_SHIFT_ON)
+            }
+            return true
+        }
+        // Follow the text being edited, not the active keyboard language (mixed-language fields).
+        val rtl = isRtlNearCursor(RichInputMethodManager.getInstance().currentSubtype.isRtlSubtype)
         val steps = if (rtl) -rawSteps else rawSteps
         val moveSteps: Int
         if (steps < 0) {
@@ -382,6 +389,36 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
         connection.setSelection(newPosition, newPosition)
         inputLogic.restartSuggestionsOnWordTouchedByCursor(settings.current, keyboardSwitcher.currentKeyboardScript)
         return true
+    }
+
+    private fun isRtlNearCursor(fallback: Boolean): Boolean {
+        val before = connection.getTextBeforeCursor(64, 0) ?: ""
+        val after = connection.getTextAfterCursor(64, 0) ?: ""
+        val beforeDirection = nearestStrongDirection(before, true)
+        val afterDirection = nearestStrongDirection(after, false)
+        return when {
+            beforeDirection == null -> afterDirection?.second ?: fallback
+            afterDirection == null -> beforeDirection.second
+            beforeDirection.first <= afterDirection.first -> beforeDirection.second
+            else -> afterDirection.second
+        }
+    }
+
+    private fun nearestStrongDirection(text: CharSequence, backwards: Boolean): Pair<Int, Boolean>? {
+        var index = if (backwards) text.length else 0
+        var distance = 0
+        while (if (backwards) index > 0 else index < text.length) {
+            val codePoint = if (backwards) Character.codePointBefore(text, index) else Character.codePointAt(text, index)
+            val charCount = Character.charCount(codePoint)
+            when (Character.getDirectionality(codePoint)) {
+                Character.DIRECTIONALITY_LEFT_TO_RIGHT -> return distance to false
+                Character.DIRECTIONALITY_RIGHT_TO_LEFT,
+                Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC -> return distance to true
+            }
+            index += if (backwards) -charCount else charCount
+            distance += charCount
+        }
+        return null
     }
 
     private fun gestureMoveBackHaptics() {
@@ -492,7 +529,7 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
                 metaState = metaState and metaCode.inv()
                 keyboardSwitcher.mainKeyboardView?.updateLockState(primaryCode, false)
             }
-        } else if (metaState != 0) {
+        } else if (metaState != 0 && primaryCode != KeyCode.SHIFT) {
             // non-meta key -> unset all set / released_but_active, and mark pressed as UNSET_ON_RELEASE
             metaPressStates.forEach { key, value ->
                 if (value == MetaPressState.RELEASED_BUT_ACTIVE || value == MetaPressState.SET) {
@@ -532,5 +569,13 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
         }
 
         private fun Int.isMetaLock() = this == KeyCode.CTRL_LOCK || this == KeyCode.ALT_LOCK || this == KeyCode.FN_LOCK || this == KeyCode.META_LOCK
+
+        private fun Int.isSelectionNavigationKey() = when (this) {
+            KeyCode.ARROW_LEFT, KeyCode.ARROW_RIGHT, KeyCode.ARROW_UP, KeyCode.ARROW_DOWN,
+            KeyCode.MOVE_START_OF_PAGE, KeyCode.MOVE_END_OF_PAGE,
+            KeyCode.MOVE_START_OF_LINE, KeyCode.MOVE_END_OF_LINE,
+            KeyCode.WORD_LEFT, KeyCode.WORD_RIGHT, KeyCode.PAGE_UP, KeyCode.PAGE_DOWN -> true
+            else -> false
+        }
     }
 }
