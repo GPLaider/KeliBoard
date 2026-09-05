@@ -6,7 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class HangulCombinerTest {
-    @Test fun cheonjiinSpaceSeparatesAnActiveConsonantCycle() {
+    @Test fun cheonjiinSpaceRemainsARealSpaceEvent() {
         var now = 1_000L
         val combiner = HangulCombiner { now }
 
@@ -22,14 +22,9 @@ class HangulCombinerTest {
         }
 
         typeKieuk()
-        val separator = tap(' '.code)
-        assertEquals("", separator.nextEvent?.textToCommit)
-        typeKieuk()
-        assertEquals("ㅋㅋ", separator.text.toString() + combiner.combiningStateFeedback)
-        now += 1_600
-        val actualSpace = tap(' '.code)
-        assertEquals("ㅋ", actualSpace.text)
-        assertEquals(" ", actualSpace.nextEvent?.textToCommit)
+        val space = tap(' '.code)
+        assertEquals("ㅋ", space.text)
+        assertEquals(" ", space.nextEvent?.textToCommit)
     }
 
     @Test fun cheonjiinComposesModernVowelsAndCyclesKeys() {
