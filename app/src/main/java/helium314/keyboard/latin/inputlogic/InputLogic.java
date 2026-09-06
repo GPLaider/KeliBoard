@@ -27,7 +27,6 @@ import androidx.annotation.Nullable;
 
 import helium314.keyboard.compat.AppWorkarounds;
 import helium314.keyboard.event.Event;
-import helium314.keyboard.event.HangulCombiner;
 import helium314.keyboard.event.InputTransaction;
 import helium314.keyboard.keyboard.Keyboard;
 import helium314.keyboard.keyboard.KeyboardElement;
@@ -132,8 +131,6 @@ public final class InputLogic {
     private boolean mJustRevertedACommit = false;
 
     private long mCursorMoveExpectedUntil = 0L;
-    private int mLastCheonjiinConsonantCode = Event.NOT_A_CODE_POINT;
-    private boolean mCheonjiinSpacePending;
 
     /**
      * Create a new instance of the input logic.
@@ -165,7 +162,6 @@ public final class InputLogic {
     public void startInput(final String combiningSpec, final SettingsValues settingsValues) {
         mEnteredText = null;
         mWordBeingCorrectedByCursor = null;
-        clearCheonjiinSpaceState();
         mConnection.onStartInput();
         if (!mWordComposer.getTypedWord().isEmpty()) {
             // For messaging apps that offer send button, the IME does not get the opportunity
@@ -227,7 +223,6 @@ public final class InputLogic {
         resetComposingState(true);
         mInputLogicHandler.reset();
         mSpaceState = SpaceState.NONE;
-        clearCheonjiinSpaceState();
     }
 
     /**
@@ -373,7 +368,6 @@ public final class InputLogic {
 
     /** indicates that the next selection update is expected to be a cursor move (though not needed for arrow keys) */
     public void setExpectCursorMove() {
-        clearCheonjiinSpaceState();
         mCursorMoveExpectedUntil = SystemClock.elapsedRealtime() + 500;
     }
 
@@ -402,7 +396,6 @@ public final class InputLogic {
             // note that arrow keys are not considered, because for them isBelatedExpectedUpdate returns false
             return expectCursorMove;
         }
-        clearCheonjiinSpaceState();
 
         // if all text is gone, we treat it like onStartInput
         if (GestureDataGatheringKt.useBackgroundGathering && newSelStart == 0 && newSelEnd == 0 && !mConnection.hasTextAfterCursor())
@@ -429,7 +422,8 @@ public final class InputLogic {
         // should be true, but that is if the framework had taken that wrong cursor position
         // into account, which means we have to reset the entire composing state whenever there
         // is or was a selection regardless of whether it changed or not.
-        if (hasOrHadSelection || !settingsValues.needsToLookupSuggestions()
+        if (hasOrHadSelection || "hangul".equals(mWordComposer.getCombiningSpec())
+                || !settingsValues.needsToLookupSuggestions()
                 || (selectionChangedOrSafeToReset
                         && !mWordComposer.moveCursorByAndReturnIfInsideComposingWord(moveAmount))) {
             // If we are composing a word and moving the cursor, we would want to set a
@@ -473,6 +467,8 @@ public final class InputLogic {
     }
 
     public boolean moveCursorByAndReturnIfInsideComposingWord(int distance) {
+        // Use the caller's finishInput path for Hangul, even within the same word.
+        if ("hangul".equals(mWordComposer.getCombiningSpec())) return false;
         return mWordComposer.moveCursorByAndReturnIfInsideComposingWord(distance);
     }
 
@@ -495,12 +491,6 @@ public final class InputLogic {
         mJustRevertedACommit = false;
 
         final long eventTime = SystemClock.uptimeMillis();
-        boolean retractCheonjiinSpace = updateCheonjiinSpaceState(event, eventTime);
-        retractCheonjiinSpace = retractCheonjiinSpace && !mConnection.hasSelection()
-                && mConnection.getCodePointBeforeCursor() == Constants.CODE_SPACE;
-        if (retractCheonjiinSpace) {
-            mSpaceState = SpaceState.NONE;
-        }
 
         if (GestureDataGatheringKt.useBackgroundGathering && mConnection.hasSelection())
             BackgroundGatheringCache.INSTANCE.onEditSelection(mConnection.getSelectedText(0), mConnection.getTextBeforeCursor(40, 0), mConnection.getTextAfterCursor(40, 0));
@@ -529,9 +519,6 @@ public final class InputLogic {
         }
         mLastKeyTime = inputTransaction.getTimestamp();
         mConnection.beginBatchEdit();
-        if (retractCheonjiinSpace) {
-            mConnection.deleteTextBeforeCursor(1);
-        }
         if (!mWordComposer.isComposingWord()) {
             // TODO: is this useful? It doesn't look like it should be done here, but rather after
             // a word is committed.
@@ -554,6 +541,14 @@ public final class InputLogic {
             }
             currentEvent = currentEvent.getNextEvent();
         }
+        // Cheonjiin's first space commits the composition without inserting a space.
+        if (event.getCodePoint() == Constants.CODE_SPACE && processedEvent.getNextEvent() != null
+                && processedEvent.getNextEvent().isConsumed()) {
+            resetEntireInputState(mConnection.getExpectedSelectionStart(),
+                    mConnection.getExpectedSelectionEnd(), false);
+            mSpaceState = SpaceState.NONE;
+            cancelDoubleSpacePeriodCountdown();
+        }
         // Try to record the word being corrected when the user enters a word character or
         // the backspace key.
         if (!mConnection.hasSlowInputConnection() && !mWordComposer.isComposingWord()
@@ -573,37 +568,6 @@ public final class InputLogic {
         }
         mConnection.endBatchEdit();
         return inputTransaction;
-    }
-
-    private boolean updateCheonjiinSpaceState(final Event event, final long eventTime) {
-        final int codePoint = event.getCodePoint();
-        final boolean isHangul = "hangul".equals(mWordComposer.getCombiningSpec());
-        final boolean isCheonjiinConsonant = codePoint >= HangulCombiner.CHEONJIIN_CONSONANT_GIYEOK
-                && codePoint <= HangulCombiner.CHEONJIIN_CONSONANT_IEUNG;
-        final long elapsed = eventTime - mLastKeyTime;
-        final boolean isTimely = elapsed >= 0 && elapsed <= HangulCombiner.CHEONJIIN_CYCLE_TIMEOUT_MS;
-        final boolean retractSpace = isHangul && mCheonjiinSpacePending
-                && codePoint == mLastCheonjiinConsonantCode
-                && isTimely;
-
-        if (isHangul && codePoint == Constants.CODE_SPACE && !mCheonjiinSpacePending
-                && mLastCheonjiinConsonantCode != Event.NOT_A_CODE_POINT
-                && isTimely) {
-            mCheonjiinSpacePending = true;
-        } else {
-            mCheonjiinSpacePending = false;
-            if (isHangul && isCheonjiinConsonant) {
-                mLastCheonjiinConsonantCode = codePoint;
-            } else {
-                mLastCheonjiinConsonantCode = Event.NOT_A_CODE_POINT;
-            }
-        }
-        return retractSpace;
-    }
-
-    private void clearCheonjiinSpaceState() {
-        mLastCheonjiinConsonantCode = Event.NOT_A_CODE_POINT;
-        mCheonjiinSpacePending = false;
     }
 
     public void onStartBatchInput(final SettingsValues settingsValues,
@@ -1964,6 +1928,8 @@ public final class InputLogic {
     }
 
     private void restartSuggestions(final TextRange range) {
+        // Committed Hangul must not become an editable composition after cursor movement.
+        if ("hangul".equals(mWordComposer.getCombiningSpec())) return;
         final int numberOfCharsInWordBeforeCursor = range.getNumberOfCharsInWordBeforeCursor();
         final int expectedCursorPosition = mConnection.getExpectedSelectionStart();
         if (numberOfCharsInWordBeforeCursor > expectedCursorPosition) return;

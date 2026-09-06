@@ -24,6 +24,7 @@ class HangulCombiner(
     private var cheonjiinCycleHistory = emptyList<HangulSyllable>()
     private var cheonjiinVowel = 0
     private var pendingCheonjiinDots = 0
+    private var cheonjiinComposition = false
 
     override fun processEvent(previousEvents: ArrayList<Event>?, event: Event): Event {
         processCheonjiinEvent(event)?.let { return it }
@@ -214,7 +215,15 @@ class HangulCombiner(
     }
 
     private fun processCheonjiinEvent(event: Event): Event? {
+        if (event.codePoint in CHEONJIIN_VOWEL_I..CHEONJIIN_VOWEL_EU
+                || event.codePoint in CONSONANT_CYCLES)
+            cheonjiinComposition = true
         return when (event.codePoint) {
+            Constants.CODE_SPACE -> if (cheonjiinComposition && combiningStateFeedback.isNotEmpty()) {
+                val text = combiningStateFeedback
+                reset()
+                createEventChainFromSequence(text, Event.createConsumedEvent(event))
+            } else null
             CHEONJIIN_VOWEL_I -> processCheonjiinVowel('ㅣ', event)
             CHEONJIIN_VOWEL_DOT -> processCheonjiinVowel(CHEONJIIN_DOT, event)
             CHEONJIIN_VOWEL_EU -> processCheonjiinVowel('ㅡ', event)
@@ -352,6 +361,7 @@ class HangulCombiner(
         }
 
     override fun reset() {
+        cheonjiinComposition = false
         composingWord.setLength(0)
         history.clear()
         clearCheonjiinCycle()
@@ -462,7 +472,7 @@ class HangulCombiner(
         const val CHEONJIIN_CONSONANT_IEUNG = 0xe016
         const val CHEONJIIN_PUNCTUATION = 0xe020
 
-        const val CHEONJIIN_CYCLE_TIMEOUT_MS = 1500L
+        private const val CHEONJIIN_CYCLE_TIMEOUT_MS = 1500L
         private const val CHEONJIIN_DOT = 'ㆍ'
 
         private val CONSONANT_CYCLES = mapOf(

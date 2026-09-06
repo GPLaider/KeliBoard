@@ -294,6 +294,25 @@ class InputLogicTest {
         assertEquals("안녕,", text)
     }
 
+    @Test fun cheonjiinBackspaceInsideComposition() {
+        inputLogic.startInput("hangul", settingsValues)
+        intArrayOf(
+            HangulCombiner.CHEONJIIN_CONSONANT_GIYEOK,
+            HangulCombiner.CHEONJIIN_VOWEL_I,
+            HangulCombiner.CHEONJIIN_VOWEL_DOT,
+            HangulCombiner.CHEONJIIN_CONSONANT_NIEUN,
+            HangulCombiner.CHEONJIIN_VOWEL_I,
+            HangulCombiner.CHEONJIIN_VOWEL_DOT,
+        ).forEach(::input)
+        assertEquals("가나", text)
+        latinIME.mKeyboardActionListener.onHorizontalSpaceSwipe(-1)
+        assertEquals(1, cursor)
+        assertEquals(false, composer.isComposingWord)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("나", text)
+        assertEquals(0, cursor)
+    }
+
     @Test fun cheonjiinWordSpaceAndCursorBackspace() {
         inputLogic.startInput("hangul", settingsValues)
         intArrayOf(
@@ -301,6 +320,7 @@ class InputLogicTest {
             HangulCombiner.CHEONJIIN_VOWEL_I,
             HangulCombiner.CHEONJIIN_VOWEL_DOT,
             HangulCombiner.CHEONJIIN_CONSONANT_NIEUN,
+            Constants.CODE_SPACE,
             Constants.CODE_SPACE,
             HangulCombiner.CHEONJIIN_CONSONANT_GIYEOK,
             HangulCombiner.CHEONJIIN_VOWEL_I,
@@ -340,6 +360,7 @@ class InputLogicTest {
             HangulCombiner.CHEONJIIN_VOWEL_DOT,
             HangulCombiner.CHEONJIIN_VOWEL_I,
             Constants.CODE_SPACE,
+            Constants.CODE_SPACE,
             HangulCombiner.CHEONJIIN_CONSONANT_IEUNG,
             HangulCombiner.CHEONJIIN_VOWEL_I,
             HangulCombiner.CHEONJIIN_CONSONANT_GIYEOK,
@@ -352,6 +373,30 @@ class InputLogicTest {
         assertEquals(4, cursor)
         functionalKeyPress(KeyCode.DELETE)
         assertEquals("그래서이곳", text)
+    }
+
+    @Test fun cheonjiinCommitSurvivesCursorRoundTrip() {
+        inputLogic.startInput("hangul", settingsValues)
+        intArrayOf(
+            HangulCombiner.CHEONJIIN_CONSONANT_IEUNG,
+            HangulCombiner.CHEONJIIN_VOWEL_I,
+            HangulCombiner.CHEONJIIN_VOWEL_DOT,
+            HangulCombiner.CHEONJIIN_CONSONANT_NIEUN,
+        ).forEach(::input)
+        input(' ')
+        assertEquals("안", text)
+        assertEquals(false, composer.isComposingWord)
+        input(' ')
+        assertEquals("안 ", text)
+        setCursorPosition(0)
+        setCursorPosition(1)
+        assertEquals(false, composer.isComposingWord)
+        input(HangulCombiner.CHEONJIIN_VOWEL_I)
+        assertEquals("안ㅣ ", text)
+        setCursorPosition(1)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("ㅣ ", text)
+        assertEquals(0, cursor)
     }
 
     @Test fun deleteHangulInDebugMode() { // issue 1551, later only happened on phone

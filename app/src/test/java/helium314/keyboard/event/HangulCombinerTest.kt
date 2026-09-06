@@ -6,7 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class HangulCombinerTest {
-    @Test fun cheonjiinSpaceRemainsARealSpaceEvent() {
+    @Test fun cheonjiinFirstSpaceCommitsEvenAfterDelay() {
         var now = 1_000L
         val combiner = HangulCombiner { now }
 
@@ -22,9 +22,12 @@ class HangulCombinerTest {
         }
 
         typeKieuk()
+        now += 5_000
         val space = tap(' '.code)
         assertEquals("ㅋ", space.text)
-        assertEquals(" ", space.nextEvent?.textToCommit)
+        assertEquals(true, space.nextEvent?.isConsumed)
+        assertEquals("", combiner.combiningStateFeedback)
+        assertEquals(" ", tap(' '.code).nextEvent?.textToCommit)
     }
 
     @Test fun cheonjiinComposesModernVowelsAndCyclesKeys() {
