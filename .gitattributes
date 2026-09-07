@@ -1,0 +1,2 @@
+# Keep packaged text assets identical across Windows and Linux checkouts.
+app/src/main/assets/** text=auto eol=lf

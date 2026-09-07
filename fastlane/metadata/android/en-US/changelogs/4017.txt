@@ -1,0 +1,3 @@
+Standardized release builds on Linux for F-Droid reproducibility verification.
+Normalized packaged text asset line endings across platforms.
+Retains Preview 10's Cheonjiin spacing and cursor composition fixes.
