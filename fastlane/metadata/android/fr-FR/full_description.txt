@@ -1,4 +1,4 @@
-HeliBoard est un clavier open-source respectueux de la vie privée, basé sur AOSP / OpenBoard.
+KeliBoard est un clavier open-source respectueux de la vie privée, basé sur HeliBoard / AOSP / OpenBoard.
 N'utilise pas l'autorisation internet et est donc 100% hors ligne.
 
 Caractéristiques :

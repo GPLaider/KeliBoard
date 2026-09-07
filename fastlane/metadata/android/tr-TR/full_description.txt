@@ -1,4 +1,4 @@
-HeliBoard, gizliliğe önem veren, AOSP / OpenBoard tabanlı açık kaynaklı bir klavyedir.
+KeliBoard, gizliliğe önem veren, HeliBoard / AOSP / OpenBoard tabanlı açık kaynaklı bir klavyedir.
 İnternet izni kullanmaz, bu nedenle %100 çevrimdışıdır.
 
 Özellikler:

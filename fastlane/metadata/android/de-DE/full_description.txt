@@ -1,4 +1,4 @@
-HeliBoard ist eine datenschutzbewusste quelloffene Tastatur, die auf AOSP / OpenBoard basiert.
+KeliBoard ist eine datenschutzbewusste quelloffene Tastatur, die auf HeliBoard / AOSP / OpenBoard basiert.
 Verwendet keine Internetberechtigung und ist daher zu 100 % offline.
 
 Features:

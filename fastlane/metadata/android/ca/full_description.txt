@@ -1,4 +1,4 @@
-HeliBoard és un teclat de codi obert conscient de la privadesa, basat en AOSP / OpenBoard.
+KeliBoard és un teclat de codi obert conscient de la privadesa, basat en HeliBoard / AOSP / OpenBoard.
 No utilitza Internet i, per tant, està 100% fora de línia.
 
 Característiques:

@@ -1,4 +1,4 @@
-HeliBoard é um teclado open-source privado, baseado no AOSP / OpenBoard.
+KeliBoard é um teclado open-source privado, baseado no HeliBoard / AOSP / OpenBoard.
 Não usa a permissão da internet, assim sendo 100% offline.
 
 Funcionalidades:

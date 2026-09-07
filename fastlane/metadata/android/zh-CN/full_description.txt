@@ -1,4 +1,4 @@
-HeliBoard 是基于 AOSP / OpenBoard 的注重隐私的开源键盘。
+KeliBoard 是基于 HeliBoard / AOSP / OpenBoard 的注重隐私的开源键盘。
 不使用互联网权限，因此 100% 离线。
 
 功能：

@@ -1,4 +1,4 @@
-HeliBoard on yksityisyyttä kunnioittava avoimen lähdekoodin näppäimistö, joka perustuu AOSP / OpenBoardiin.
+KeliBoard on yksityisyyttä kunnioittava avoimen lähdekoodin näppäimistö, joka perustuu HeliBoard / AOSP / OpenBoardiin.
 Ei käytä Internet-lupaa, joten on kokonaan ei-verkkotilassa.
 
 Ominaisuudet:

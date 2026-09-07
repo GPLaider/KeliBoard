@@ -1,4 +1,4 @@
-HeliBoard to dbająca o prywatność klawiatura typu open source, oparta na AOSP / OpenBoard.
+KeliBoard to dbająca o prywatność klawiatura typu open source, oparta na HeliBoard / AOSP / OpenBoard.
 Nie korzysta z uprawnień do internetu, więc jest w 100% offline.
 
 Funkcje:

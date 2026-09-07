@@ -1,4 +1,4 @@
-HeliBoard er lyklaborð sem verndar persónuleg gögn, byggt á AOSP / OpenBoard.
+KeliBoard er lyklaborð sem verndar persónuleg gögn, byggt á HeliBoard / AOSP / OpenBoard.
 Notar ekki heimildir fyrir internet og er þannig 100% ónettengt.
 
 Eiginleikar:

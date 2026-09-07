@@ -1,4 +1,4 @@
-HeliBoard adalah papan ketik sumber terbuka yang mengutamakan privasi, berdasarkan AOSP OpenBoard.
+KeliBoard adalah papan ketik sumber terbuka yang mengutamakan privasi, berdasarkan HeliBoard / AOSP OpenBoard.
 
 Tidak menggunakan izin internet, dan karenanya 100% offline.
 

@@ -1,4 +1,4 @@
-HeliBoard on privaatsust austav avatud lähtekoodiga klahvistik, mis põhineb AOSP-il / OpenBoardil.
+KeliBoard on privaatsust austav avatud lähtekoodiga klahvistik, mis põhineb HeliBoard / AOSP-il / OpenBoardil.
 Ei kasuta interneti luba ning on seega toimib 100% võrguühenduseta.
 
 Funktsionaalsus:

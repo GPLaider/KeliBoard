@@ -1,4 +1,4 @@
-O HeliBoard é um teclado de código aberto, consciente sobre a privacidade, baseado no do AOSP e no OpenBoard.
+O KeliBoard é um teclado de código aberto, consciente sobre a privacidade, baseado no do HeliBoard / AOSP e no OpenBoard.
 Não solicita a permissão de rede do Android, é 100% offline e não tem acesso à internet.
 
 Recursos:

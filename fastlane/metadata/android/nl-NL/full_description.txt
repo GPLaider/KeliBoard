@@ -1,4 +1,4 @@
-HeliBoard is een privacybewust open-source toetsenbord, gebaseerd op AOSP / OpenBoard.
+KeliBoard is een privacybewust open-source toetsenbord, gebaseerd op HeliBoard / AOSP / OpenBoard.
 Het verlangt geen netwerkrechten en is dus 100% offline.
 
 Kenmerken:

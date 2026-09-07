@@ -1,4 +1,4 @@
-A HeliBoard egy adatvédelem-tudatos, nyílt forráskódú billentyűzet, amely az AOSP / OpenBoard alapjain nyugszik.
+A KeliBoard egy adatvédelem-tudatos, nyílt forráskódú billentyűzet, amely az HeliBoard / AOSP / OpenBoard alapjain nyugszik.
 Nem használ internet-hozzáférést, így 100%-ban offline működik.
 
 Funkciók:
