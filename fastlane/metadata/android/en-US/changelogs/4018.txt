@@ -1,0 +1,3 @@
+First stable KeliBoard release, based on Preview 11.
+Corrected the app name in localized store descriptions.
+Existing KeliBoard installations can update without uninstalling.
