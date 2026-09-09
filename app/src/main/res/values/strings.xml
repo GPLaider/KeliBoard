@@ -80,6 +80,8 @@
     <string name="language_switch_key_behavior">Language switch key behavior</string>
     <!-- Option to show shortcut key to emoji palettes -->
     <string name="show_emoji_key">Emoji key</string>
+    <!-- Option to show shortcut key to d-pad -->
+    <string name="show_dpad_key">D-pad key</string>
     <!-- Units abbreviation for the duration (milliseconds) -->
     <string name="abbreviation_unit_milliseconds">%s ms</string>
     <!-- Units abbreviation for the duration (minutes) -->

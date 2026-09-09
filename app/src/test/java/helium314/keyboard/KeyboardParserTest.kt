@@ -193,6 +193,15 @@ f""", // no newline at the end
         assertEquals('A'.code, codeFor(KeyboardElement.ALPHABET_SHIFT_LOCKED))
     }
 
+    @Test fun `dpad key can be hidden from symbols layout`() {
+        val subtype = SettingsSubtype.fallbackSubtype.toAdditionalSubtype()
+        val shown = buildKeyboard(EditorInfo(), subtype, KeyboardElement.SYMBOLS, dpadKeyEnabled = true).second
+        val hidden = buildKeyboard(EditorInfo(), subtype, KeyboardElement.SYMBOLS, dpadKeyEnabled = false).second
+
+        assertTrue(shown.flatten().any { it.mCode == KeyCode.DPAD })
+        assertTrue(hidden.flatten().none { it.mCode == KeyCode.DPAD })
+    }
+
     @Test fun `cheonjiin number row preserves Samsung four-column alignment`() {
         val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(
             Locale.KOREAN, "korean_cheonjiin", false
@@ -920,6 +929,7 @@ f""", // no newline at the end
         subtype: InputMethodSubtype,
         element: KeyboardElement,
         numberRowEnabled: Boolean = false,
+        dpadKeyEnabled: Boolean = true,
         secondaryLocales: List<Locale>? = null,
     ): Pair<Keyboard, List<List<KeyParams>>> {
         val layoutParams = KeyboardLayoutSet.Params()
@@ -932,6 +942,7 @@ f""", // no newline at the end
         val heightField = KeyboardLayoutSet.Params::class.java.getDeclaredField("keyboardHeight").apply { isAccessible = true }
         heightField.setInt(layoutParams, 300)
         layoutParams.numberRowEnabled = numberRowEnabled
+        layoutParams.dpadKeyEnabled = dpadKeyEnabled
 
         val keysInRowsField = KeyboardBuilder::class.java.getDeclaredField("keysInRows").apply { isAccessible = true }
 

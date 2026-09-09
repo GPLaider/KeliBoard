@@ -106,6 +106,7 @@
     <string name="enable_clipboard_history">클립보드 기록 활성화</string>
     <string name="delete_swipe">스와이프 삭제</string>
     <string name="show_emoji_key">이모지 키</string>
+    <string name="show_dpad_key">방향 패드 키</string>
     <string name="settings_category_input">입력</string>
     <string name="settings_category_additional_keys">추가 키</string>
     <string name="settings_category_correction">교정</string>

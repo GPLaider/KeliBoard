@@ -165,6 +165,7 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
                 .setNumberRowInSymbolsEnabled(settingsValues.mShowsNumberRowInSymbols)
                 .setLanguageSwitchKeyEnabled(settingsValues.isLanguageSwitchKeyEnabled())
                 .setEmojiKeyEnabled(settingsValues.mShowsEmojiKey)
+                .setDpadKeyEnabled(settingsValues.mShowsDpadKey)
                 .setSplitLayoutEnabled(settingsValues.mIsSplitKeyboardEnabled)
                 .setOneHandedModeEnabled(settingsValues.mOneHandedModeEnabled)
                 .setInternalAction(internalAction)
@@ -181,6 +182,7 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
                         .setNumberRowInSymbolsEnabled(settingsValues.mShowsNumberRowInSymbols)
                         .setLanguageSwitchKeyEnabled(settingsValues.isLanguageSwitchKeyEnabled())
                         .setEmojiKeyEnabled(settingsValues.mShowsEmojiKey)
+                        .setDpadKeyEnabled(settingsValues.mShowsDpadKey)
                         .build();
                 mState.onLoadKeyboard(currentAutoCapsState, currentRecapitalizeState, false);
                 showToast("error loading the keyboard, falling back to defaults", false);
