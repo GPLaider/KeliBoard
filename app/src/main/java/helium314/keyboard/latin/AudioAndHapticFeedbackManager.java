@@ -114,7 +114,8 @@ public final class AudioAndHapticFeedbackManager {
         if (viewToPerformHapticFeedbackOn != null) {
             viewToPerformHapticFeedbackOn.performHapticFeedback(
                     hapticEvent.feedbackConstant,
-                    HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+                    HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
+                            | HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING);
         }
     }
 

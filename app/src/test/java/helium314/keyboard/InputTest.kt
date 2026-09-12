@@ -17,6 +17,7 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.text.InputType
 import android.view.KeyEvent
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -24,6 +25,7 @@ import android.view.inputmethod.EditorInfo
 import android.widget.ImageView
 import android.widget.TextView
 import helium314.keyboard.event.Event
+import helium314.keyboard.event.HapticEvent
 import helium314.keyboard.keyboard.KeyboardElement
 import helium314.keyboard.keyboard.KeyboardSwitcher
 import helium314.keyboard.keyboard.MainKeyboardView
@@ -31,6 +33,7 @@ import helium314.keyboard.keyboard.emoji.EmojiSearchActivity
 import helium314.keyboard.keyboard.internal.keyboard_parser.LayoutParser
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.ClipboardHistoryManager
+import helium314.keyboard.latin.AudioAndHapticFeedbackManager
 import helium314.keyboard.latin.LatinIME
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.RichInputMethodSubtype
@@ -461,6 +464,37 @@ class InputTest {
         } finally {
             strip.setToolbarVisibility(false)
             strip.visibility = View.VISIBLE
+        }
+    }
+
+    @Test fun configuredToolbarHapticsIgnoreDisabledViewFeedback() {
+        val prefs = latinIME.prefs()
+        val oldVibrate = prefs.getBoolean(Settings.PREF_VIBRATE_ON, false)
+        val oldDuration = prefs.getInt(Settings.PREF_VIBRATION_DURATION_SETTINGS, -1)
+        var receivedFlags = 0
+        val view = object : View(latinIME) {
+            override fun performHapticFeedback(feedbackConstant: Int, flags: Int): Boolean {
+                receivedFlags = flags
+                return true
+            }
+        }.apply { isHapticFeedbackEnabled = false }
+
+        try {
+            prefs.edit()
+                .putBoolean(Settings.PREF_VIBRATE_ON, true)
+                .putInt(Settings.PREF_VIBRATION_DURATION_SETTINGS, -1)
+                .commit()
+            latinIME.onStartInputView(EditorInfo(), false)
+
+            AudioAndHapticFeedbackManager.getInstance().performHapticFeedback(view, HapticEvent.KEY_PRESS)
+
+            assertTrue(receivedFlags and HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING != 0)
+        } finally {
+            prefs.edit()
+                .putBoolean(Settings.PREF_VIBRATE_ON, oldVibrate)
+                .putInt(Settings.PREF_VIBRATION_DURATION_SETTINGS, oldDuration)
+                .commit()
+            latinIME.onStartInputView(EditorInfo(), false)
         }
     }
 

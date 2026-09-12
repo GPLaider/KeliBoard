@@ -169,6 +169,11 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
         typedWordInfo: SuggestedWordInfo?
     ): Pair<Boolean, Boolean> {
         if (typedWordInfo?.mSourceDict?.mDictType == Dictionary.TYPE_USER) return false to false
+        if (firstSuggestionInContainer?.isKindOf(SuggestedWordInfo.KIND_SHORTCUT) == true
+            && firstSuggestionInContainer.isExactMatch()
+            && Settings.getValues().mAutoCorrectShortcuts) {
+            return true to (isCorrectionEnabled && wordComposer.isComposingWord && !wordComposer.isResumed)
+        }
 
         val consideredWord = typedWordString.dropLast(trailingSingleQuotesCount)
         if ("@.-".any { typedWordString.contains(it) && firstSuggestionInContainer?.mWord?.contains(it) != true }) return false to false

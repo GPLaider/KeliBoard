@@ -121,7 +121,11 @@ class ClipboardHistoryView @JvmOverloads constructor(
 
     private fun setupToolbarKeys() {
         // set layout params
-        val toolbarKeyLayoutParams = LayoutParams(resources.getDimensionPixelSize(R.dimen.config_suggestions_strip_edge_key_width), LayoutParams.MATCH_PARENT)
+        val toolbarKeyLayoutParams = LayoutParams(
+            resources.getDimensionPixelSize(R.dimen.config_suggestions_strip_edge_key_width),
+            LayoutParams.MATCH_PARENT,
+            1f,
+        )
         toolbarKeys.forEach { it.layoutParams = toolbarKeyLayoutParams }
     }
 

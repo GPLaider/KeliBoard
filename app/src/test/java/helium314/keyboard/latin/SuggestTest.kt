@@ -12,6 +12,7 @@ import helium314.keyboard.keyboard.KeyboardLayoutSet
 import helium314.keyboard.keyboard.internal.KeyboardParams
 import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo
 import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo.KIND_FLAG_APPROPRIATE_FOR_AUTO_CORRECTION
+import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo.KIND_FLAG_EXACT_MATCH
 import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo.KIND_SHORTCUT
 import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo.KIND_WHITELIST
 import helium314.keyboard.latin.common.ComposedData
@@ -262,13 +263,28 @@ class SuggestTest {
         assert(!result2.last()) // should not be corrected
     }
 
+    @Test fun `exact shortcuts autocorrect consistently`() {
+        val locale = Locale.ENGLISH
+        for ((shortcut, target) in listOf("tech" to "technology", "u" to "you")) {
+            val result = shouldBeAutoCorrected(
+                shortcut,
+                listOf(suggestion(target, 1, locale, shortcut = true, exactMatch = true)),
+                null,
+                null,
+                locale,
+                confidenceVeryAggressive,
+            )
+            assertEquals(listOf(true, true), result)
+        }
+    }
+
     @Test fun `shortcuts are not autocorrected when setting is off`() {
         val prefs = latinIME.prefs()
         prefs.edit { putBoolean(Settings.PREF_AUTOCORRECT_SHORTCUTS, false) }
         val locale = Locale.ENGLISH
         val result = shouldBeAutoCorrected(
             "gd",
-            listOf(suggestion("good", 12000000, locale, true)),
+            listOf(suggestion("good", 12000000, locale, shortcut = true, exactMatch = true)),
             null,
             null,
             locale,
@@ -750,6 +766,7 @@ fun suggestion(
     score: Int,
     locale: Locale = currentTypingLocale,
     shortcut: Boolean = false,
+    exactMatch: Boolean = false,
     dictionaryType: String = Dictionary.TYPE_MAIN,
 ) =
     SuggestedWordInfo(
@@ -760,7 +777,7 @@ fun suggestion(
         // when previous word context is empty, scores are usually 200+ if word is known and somewhat often used, 0 if unknown
         score,
         if (score == Int.MAX_VALUE) KIND_WHITELIST
-            else if (shortcut) KIND_SHORTCUT // whitelist & shortcut only counts a whitelist
+            else if (shortcut) KIND_SHORTCUT or (if (exactMatch) KIND_FLAG_EXACT_MATCH else 0)
             else KIND_FLAG_APPROPRIATE_FOR_AUTO_CORRECTION, // shortcuts seem to never have this flag
         TestDict(locale, dictionaryType),
         0, // irrelevant

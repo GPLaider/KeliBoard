@@ -266,7 +266,8 @@ const int SuggestionsOutputUtils::MIN_LEN_FOR_MULTI_WORD_AUTOCORRECT = 16;
             shortcutScore = finalScore;
             // Protection against int underflow
             shortcutScore = std::max(S_INT_MIN + 1, shortcutScore) - 1;
-            kind = Dictionary::KIND_SHORTCUT;
+            kind = Dictionary::KIND_SHORTCUT
+                    | (sameAsTyped ? Dictionary::KIND_FLAG_EXACT_MATCH : 0);
         }
         outSuggestionResults->addSuggestion(shortcutTarget, shortcutTargetStringLength,
                 std::max(S_INT_MIN + 1, shortcutScore) - 1, kind, NOT_AN_INDEX,

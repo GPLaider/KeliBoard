@@ -103,6 +103,7 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
     // Parameters for pointer handling.
     private static PointerTrackerParams sParams;
     private static final int sPointerStep = KtxKt.dpToPx(10, Resources.getSystem());
+    private static final int sVerticalPointerStep = 2 * sPointerStep;
     private static GestureStrokeRecognitionParams sGestureStrokeRecognitionParams;
     private static GestureStrokeDrawingParams sGestureStrokeDrawingParams;
 
@@ -973,14 +974,14 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
             mTouchpadHandler.enableTouchpadMove(x, y, sListener);
 
             // Vertical movement
-            int stepsY = dY / sPointerStep;
+            int stepsY = dY / sVerticalPointerStep;
             if (stepsY != 0 && abs(dX) < abs(dY) && !mInHorizontalSwipe) {
                 if (!mInVerticalSwipe) {
                     sTimerProxy.cancelKeyTimersOf(this);
                     mInVerticalSwipe = true;
                 } else if (oneShotSwipe(sv.mSpaceSwipeVertical)) return;
                 if (sListener.onVerticalSpaceSwipe(stepsY)) {
-                    mStartY += stepsY * sPointerStep;
+                    mStartY += stepsY * sVerticalPointerStep;
                 }
                 return;
             }
