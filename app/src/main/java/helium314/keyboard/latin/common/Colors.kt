@@ -356,7 +356,7 @@ class DynamicColors(context: Context, override val themeStyle: String, override 
                         keyboardBackground = keyboardBackground!!.toBitmap(view.width, view.height).toDrawable(view.context.resources)
                         backgroundSetupDone = true
                     }
-                    view.background = keyboardBackground
+                    view.background = keyboardBackground!!.copyForView(view)
                 } else {
                     view.background.colorFilter = backgroundFilter
                 }
@@ -541,7 +541,7 @@ class DefaultColors (
                         keyboardBackground = keyboardBackground!!.toBitmap(view.width, view.height).toDrawable(view.context.resources)
                         backgroundSetupDone = true
                     }
-                    view.background = keyboardBackground
+                    view.background = keyboardBackground!!.copyForView(view)
                 } else {
                     view.background.colorFilter = backgroundFilter
                 }
@@ -592,7 +592,7 @@ class AllColors(private val colorMap: EnumMap<ColorType, Int>, override val them
                         keyboardBackground = keyboardBackground!!.toBitmap(view.width, view.height).toDrawable(view.context.resources)
                         backgroundSetupDone = true
                     }
-                    view.background = keyboardBackground
+                    view.background = keyboardBackground!!.copyForView(view)
                 } else {
                     setColor(view.background, color)
                 }
@@ -608,6 +608,8 @@ private fun colorFilter(color: Int, mode: BlendModeCompat = BlendModeCompat.MODU
     // using !! for the color filter because null is only returned for unsupported blend modes, which are not used
     return BlendModeColorFilterCompat.createBlendModeColorFilterCompat(color, mode)!!
 }
+
+private fun Drawable.copyForView(view: View) = constantState?.newDrawable(view.resources)?.mutate() ?: mutate()
 
 internal fun needsDarkActionKeyIcon(@ColorInt background: Int) =
     ColorUtils.calculateContrast(Color.WHITE, background) < 3.0
