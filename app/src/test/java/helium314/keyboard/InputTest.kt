@@ -532,6 +532,21 @@ class InputTest {
         }
     }
 
+    @Test fun pasteKeyPreservesComposingText() {
+        val clipboard = latinIME.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("copied text", " paste"))
+        try {
+            "keep".forEach { latinIME.onCodeInput(it.code, 0, 0, false) }
+            latinIME.mKeyboardActionListener.onCodeInput(
+                KeyCode.CLIPBOARD_PASTE, 0, 0, false
+            )
+
+            assertEquals("keep paste", ShadowInputMethodService.text)
+        } finally {
+            clipboard.clearPrimaryClip()
+        }
+    }
+
     @Test fun toolbarCopyDelegatesLongSelectionToEditor() {
         val selected = "긴 선택문".repeat(50_000)
         ShadowInputMethodService.text = selected

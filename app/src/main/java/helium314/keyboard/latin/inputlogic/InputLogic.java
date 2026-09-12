@@ -2745,6 +2745,10 @@ public final class InputLogic {
     private void paste(String packageName) {
         String primaryClip = mLatinIME.getClipboardHistoryManager().getPrimaryClipIfText();
         if (primaryClip != null) {
+            if (mWordComposer.isComposingWord()) {
+                mConnection.finishComposingText();
+                resetComposingState(true);
+            }
             mConnection.commitText(primaryClip, 1);
         } else if (AppWorkarounds.INSTANCE.doesntCareAboutKeycodePaste(packageName)
                 || Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
