@@ -77,7 +77,9 @@ final class DynamicGridKeyboard extends Keyboard {
         mColumnsNum = mBaseWidth / mHorizontalStep;
         if (spacerWidth > 0)
             setSpacerColumns(spacerWidth);
-        mMaxKeyCount = fixedRowCount? maxCount * getOccupiedColumnCount() : maxCount;
+        final int columnCount = getOccupiedColumnCount();
+        mMaxKeyCount = fixedRowCount ? maxCount * columnCount
+                : (maxCount + columnCount - 1) / columnCount * columnCount;
         mFixedRowCount = fixedRowCount;
         mIsRecents = isRecents;
     }
