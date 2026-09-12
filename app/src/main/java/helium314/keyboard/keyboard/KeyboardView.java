@@ -192,10 +192,12 @@ public class KeyboardView extends View {
         mKeyDrawParams.updateParams(scaledKeySize, keyboard.mKeyVisualAttributes);
         invalidateAllKeys();
         requestLayout();
-        mFontSizeMultiplier = mKeyboard.mId.getElement().isEmojiLayout()
+        final KeyboardElement element = mKeyboard.mId.getElement();
+        mFontSizeMultiplier = element.isEmojiLayout()
                 // In the case of EmojiKeyFit, the size of emojis is taken care of by the size of the keys
                 ? (Settings.getValues().mEmojiKeyFit ? 1 : Settings.getValues().mFontSizeMultiplierEmoji)
-                : Settings.getValues().mFontSizeMultiplier;
+                : element == KeyboardElement.NUMPAD
+                        ? Settings.getValues().mFontSizeMultiplierNumpad : Settings.getValues().mFontSizeMultiplier;
         mHintFontSizeMultiplier = Settings.getValues().mHintFontSizeMultiplier;
     }
 

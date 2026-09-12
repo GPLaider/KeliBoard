@@ -139,6 +139,7 @@ public class SettingsValues {
     public final boolean mRemoveRedundantPopups;
     public final String mSpaceBarText;
     public final float mFontSizeMultiplier;
+    public final float mFontSizeMultiplierNumpad;
     public final float mHintFontSizeMultiplier;
     public final float mFontSizeMultiplierEmoji;
     public final boolean mEmojiKeyFit;
@@ -334,6 +335,7 @@ public class SettingsValues {
         mRemoveRedundantPopups = prefs.getBoolean(Settings.PREF_REMOVE_REDUNDANT_POPUPS, Defaults.PREF_REMOVE_REDUNDANT_POPUPS);
         mSpaceBarText = prefs.getString(Settings.PREF_SPACE_BAR_TEXT, Defaults.PREF_SPACE_BAR_TEXT);
         mFontSizeMultiplier = prefs.getFloat(Settings.PREF_FONT_SCALE, Defaults.PREF_FONT_SCALE);
+        mFontSizeMultiplierNumpad = prefs.getFloat(Settings.PREF_NUMPAD_FONT_SCALE, Defaults.PREF_NUMPAD_FONT_SCALE);
         mHintFontSizeMultiplier = mShowsHints ? prefs.getFloat(Settings.PREF_HINT_FONT_SCALE, Defaults.PREF_HINT_FONT_SCALE) : 1;
         mFontSizeMultiplierEmoji = prefs.getFloat(Settings.PREF_EMOJI_FONT_SCALE, Defaults.PREF_EMOJI_FONT_SCALE);
         mEmojiKeyFit = prefs.getBoolean(Settings.PREF_EMOJI_KEY_FIT, Defaults.PREF_EMOJI_KEY_FIT);

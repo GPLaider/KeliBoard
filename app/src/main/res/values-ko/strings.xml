@@ -278,6 +278,7 @@
     <string name="prefs_emoji_skin_tone">기본 이모지 피부색</string>
     <string name="prefs_emoji_skin_tone_neutral">중립</string>
     <string name="prefs_font_scale">키보드 글자 크기</string>
+    <string name="prefs_numpad_font_scale">숫자 패드 글자 크기</string>
     <string name="prefs_hint_font_scale">키 힌트 글자 크기</string>
     <string name="prefs_key_emoji_max_sdk">이모지 버전 재정의</string>
     <string name="prefs_key_gap_scale">키 사이 간격</string>

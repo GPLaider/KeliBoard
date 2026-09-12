@@ -86,6 +86,7 @@ fun AppearanceScreen(
         Settings.PREF_SPACE_BAR_TEXT,
         SettingsWithoutKey.CUSTOM_FONT,
         Settings.PREF_FONT_SCALE,
+        Settings.PREF_NUMPAD_FONT_SCALE,
         if (prefs.getBoolean(Settings.PREF_SHOW_HINTS, Defaults.PREF_SHOW_HINTS)) Settings.PREF_HINT_FONT_SCALE else null,
         SettingsWithoutKey.CUSTOM_EMOJI_FONT,
         Settings.PREF_EMOJI_FONT_SCALE,
@@ -310,6 +311,15 @@ fun createAppearanceSettings(context: Context) = listOf(
             name = setting.title,
             key = setting.key,
             default = Defaults.PREF_FONT_SCALE,
+            range = 0.5f..1.5f,
+            description = { "${(100 * it).toInt()}%" }
+        ) { KeyboardSwitcher.getInstance().setThemeNeedsReload() }
+    },
+    Setting(context, Settings.PREF_NUMPAD_FONT_SCALE, R.string.prefs_numpad_font_scale) { setting ->
+        SliderPreference(
+            name = setting.title,
+            key = setting.key,
+            default = Defaults.PREF_NUMPAD_FONT_SCALE,
             range = 0.5f..1.5f,
             description = { "${(100 * it).toInt()}%" }
         ) { KeyboardSwitcher.getInstance().setThemeNeedsReload() }

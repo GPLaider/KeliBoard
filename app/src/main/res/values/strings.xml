@@ -415,6 +415,8 @@
     <string name="prefs_side_padding_scale">Side padding scale</string>
     <!-- Title of the setting for adjusting font size on the keyboard -->
     <string name="prefs_font_scale">Keyboard font scale</string>
+    <!-- Title of the setting for adjusting font size on the numpad -->
+    <string name="prefs_numpad_font_scale">Numpad font scale</string>
     <!-- Title of the setting for adjusting font size of the long-press hints -->
     <string name="prefs_hint_font_scale">Key hint font scale</string>
     <!-- Title of the setting for adjusting font size in emoji view -->
