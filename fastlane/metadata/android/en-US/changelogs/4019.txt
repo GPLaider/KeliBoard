@@ -1,0 +1,2 @@
+Fixed recent input, toolbar, paste, and emoji display issues.
+Added options to hide the D-pad key and adjust numpad label size.
