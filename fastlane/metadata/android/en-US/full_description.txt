@@ -2,6 +2,8 @@ KeliBoard is a modern, actively maintained HeliBoard fork focused on stability, 
 
 It is privacy-conscious, fully open source, and works offline without the internet permission.
 
+Optional recent screenshot suggestions are off by default. Enabling this feature requests access to all images on your device (storage access on Android 12 and earlier), although only recent screenshots are suggested. Selected-photo access alone is not sufficient. Images are processed locally; KeliBoard has no internet permission.
+
 Highlights:
 <ul>
   <li>Fixes for long-standing keyboard, composition, emoji, and spacing issues</li>
