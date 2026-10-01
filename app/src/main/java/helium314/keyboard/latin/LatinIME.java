@@ -1615,8 +1615,9 @@ public class LatinIME extends InputMethodService implements
         mHandler.postReopenDictionaries();
         loadSettings();
         if (mKeyboardSwitcher.getMainKeyboardView() != null) {
-            // Reload keyboard because the current language has been changed.
-            mKeyboardSwitcher.reloadMainKeyboard();
+            // Reload keyboard because the current language has been changed. A manual shift
+            // override (shift key or caps lock) survives the switch (HeliBorg/HeliBoard#2830).
+            mKeyboardSwitcher.reloadMainKeyboard(true);
         }
     }
 
