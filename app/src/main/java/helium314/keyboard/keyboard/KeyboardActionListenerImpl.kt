@@ -23,6 +23,7 @@ import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.common.InputPointers
 import helium314.keyboard.latin.common.combiningRange
 import helium314.keyboard.latin.common.moveStepsToCharCount
+import helium314.keyboard.latin.common.moveStepsToCharCountChecked
 import helium314.keyboard.latin.define.ProductionFlags
 import helium314.keyboard.latin.inputlogic.InputLogic
 import helium314.keyboard.latin.settings.Settings
@@ -261,9 +262,37 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
     }
 
     private fun actualSteps(steps: Int): Int {
-        val text = if (steps > 0) connection.getSelectedText(0) ?: return steps
-        else connection.getTextBeforeCursor(-steps * 4, 0) ?: return steps
-        return moveStepsToCharCount(text, steps)
+        if (steps > 0) {
+            val text = connection.getSelectedText(0) ?: return steps
+            return moveStepsToCharCount(text, steps)
+        }
+        return fetchTextAndMoveSteps(steps)?.second ?: steps
+    }
+
+    /**
+     * Fetches text around the cursor and translates a move of [steps] grapheme clusters into a
+     * UTF-16 char count. The fetched window may have been cut in the middle of a grapheme
+     * cluster (e.g. a long ZWJ emoji sequence), which could place the cursor inside the cluster,
+     * so the window is grown until the result is known to be on a real cluster boundary.
+     * Returns null if the app does not provide text via the input connection.
+     */
+    private fun fetchTextAndMoveSteps(steps: Int): Pair<CharSequence, Int>? {
+        var fetchLength = abs(steps) * 4
+        while (true) {
+            // fetch 2 extra chars so the code point immediately before the window is known
+            val raw = (if (steps < 0) connection.getTextBeforeCursor(fetchLength + 2, 0)
+                else connection.getTextAfterCursor(fetchLength, 0)) ?: return null
+            val hasMoreTextBefore = steps < 0 && raw.length > fetchLength
+            val text = if (hasMoreTextBefore) raw.subSequence(raw.length - fetchLength, raw.length) else raw
+            if (text.isEmpty()) return text to 0
+            val charBeforeText = if (hasMoreTextBefore) Character.codePointBefore(raw, raw.length - fetchLength) else null
+            val moveSteps = moveStepsToCharCountChecked(text, steps, charBeforeText)
+            if (moveSteps != null) return text to moveSteps
+            // no truncation possible if the app returned less than requested
+            if (text.length < fetchLength || fetchLength >= MAX_CURSOR_MOVE_TEXT_FETCH)
+                return text to moveStepsToCharCount(text, steps)
+            fetchLength *= 4
+        }
     }
 
     override fun onUpWithDeletePointerActive() {
@@ -333,8 +362,8 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
         val steps = if (rtl) -rawSteps else rawSteps
         val moveSteps: Int
         if (steps < 0) {
-            val text = connection.getTextBeforeCursor(-steps * 4, 0) ?: return false
-            moveSteps = moveStepsToCharCount(text, steps)
+            val (text, backwardMoveSteps) = fetchTextAndMoveSteps(steps) ?: return false
+            moveSteps = backwardMoveSteps
             if (moveSteps == 0) {
                 // some apps don't return any text via input connection, and the cursor can't be moved
                 // we fall back to virtually pressing the left/right key one or more times instead
@@ -349,8 +378,8 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
             }
             gestureMoveBackHaptics()
         } else {
-            val text = connection.getTextAfterCursor(steps * 4, 0) ?: return false
-            moveSteps = moveStepsToCharCount(text, steps)
+            val (text, forwardMoveSteps) = fetchTextAndMoveSteps(steps) ?: return false
+            moveSteps = forwardMoveSteps
             if (moveSteps == 0) {
                 // some apps don't return any text via input connection, and the cursor can't be moved
                 // we fall back to virtually pressing the left/right key one or more times instead
@@ -545,6 +574,9 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
     }
 
     companion object {
+        // upper limit for the text window fetched around the cursor when moving it by grapheme clusters
+        private const val MAX_CURSOR_MOVE_TEXT_FETCH = 1024
+
         private enum class MetaPressState {
             UNSET, // default state, not active
             SET, // enabled without onPressKey (e.g. in popup)
