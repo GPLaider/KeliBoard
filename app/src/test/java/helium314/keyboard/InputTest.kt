@@ -153,6 +153,32 @@ class InputTest {
         }
     }
 
+    // https://github.com/HeliBorg/HeliBoard/issues/2818
+    @Test fun spaceSwipeDoesNotStopInsideZwjEmojiSequence() {
+        val emoji = "😵‍💫" // one grapheme cluster of 5 UTF-16 units, longer than the initial fetch window
+        ShadowInputMethodService.text = "a" + emoji + "b"
+        ShadowInputMethodService.selectionStart = 1 + emoji.length
+        ShadowInputMethodService.selectionEnd = 1 + emoji.length
+        val editorInfo = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            initialSelStart = 1 + emoji.length
+            initialSelEnd = 1 + emoji.length
+        }
+        latinIME.onStartInputView(editorInfo, false)
+        latinIME.onUpdateSelection(1, 1, 1 + emoji.length, 1 + emoji.length, -1, -1)
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+
+        latinIME.mKeyboardActionListener.onHorizontalSpaceSwipe(-1)
+
+        assertEquals(1, ShadowInputMethodService.selectionStart)
+        assertEquals(1, ShadowInputMethodService.selectionEnd)
+
+        latinIME.mKeyboardActionListener.onHorizontalSpaceSwipe(1)
+
+        assertEquals(1 + emoji.length, ShadowInputMethodService.selectionStart)
+        assertEquals(1 + emoji.length, ShadowInputMethodService.selectionEnd)
+    }
+
     @Test fun alphaKeyReturnsFromExternallyOpenedEmojiKeyboard() {
         keyboardSwitcher.setEmojiKeyboard()
         assertEquals(View.VISIBLE, keyboardSwitcher.emojiPalettesView.visibility)
