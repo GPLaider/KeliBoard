@@ -153,6 +153,26 @@ class InputTest {
         }
     }
 
+    // https://github.com/HeliBorg/HeliBoard/issues/2830
+    @Test fun manualShiftSurvivesLanguageSwitch() {
+        val fallback = SettingsSubtype.fallbackSubtype.toAdditionalSubtype()
+        val arabic = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(
+            Locale.forLanguageTag("ar"), "arabic", false
+        )
+        try {
+            touchKey(KeyCode.SHIFT, MotionEvent.ACTION_DOWN)
+            touchKey(KeyCode.SHIFT, MotionEvent.ACTION_UP)
+            assertEquals(KeyboardElement.ALPHABET_MANUAL_SHIFTED, keyboardSwitcher.keyboard?.mId?.element)
+
+            latinIME.switchToSubtype(arabic)
+
+            assertEquals(KeyboardElement.ALPHABET_MANUAL_SHIFTED, keyboardSwitcher.keyboard?.mId?.element)
+        } finally {
+            RichInputMethodManager.forceSubtype(fallback)
+            keyboardSwitcher.reloadMainKeyboard()
+        }
+    }
+
     @Test fun alphaKeyReturnsFromExternallyOpenedEmojiKeyboard() {
         keyboardSwitcher.setEmojiKeyboard()
         assertEquals(View.VISIBLE, keyboardSwitcher.emojiPalettesView.visibility)

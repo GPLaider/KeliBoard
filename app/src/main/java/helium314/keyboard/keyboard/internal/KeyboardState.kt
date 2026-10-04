@@ -90,10 +90,17 @@ class KeyboardState(private val switchActions: SwitchActions) {
         }
     }
 
-    fun onLoadKeyboard(autoCapsFlags: Int, recapitalizeMode: RecapitalizeMode?, onHandedModeEnabled: Boolean) {
+    fun onLoadKeyboard(autoCapsFlags: Int, recapitalizeMode: RecapitalizeMode?, onHandedModeEnabled: Boolean,
+                       preserveManualShift: Boolean = false) {
         if (DEBUG_EVENT) {
             Log.d(TAG, "onLoadKeyboard: " + stateToString(autoCapsFlags, recapitalizeMode))
         }
+        // Remember a manual shift override (shift key or caps lock) so it can survive a keyboard
+        // reload, e.g. when switching the language (HeliBorg/HeliBoard#2830).
+        val manualShiftMode = if (preserveManualShift && (shiftMode == ShiftMode.MANUAL || shiftMode == ShiftMode.LOCKED))
+            shiftMode
+        else
+            null
         // Reset alphabet shift state.
         shiftMode = ShiftMode.UNSHIFT
         prevShiftMode = null
@@ -106,6 +113,8 @@ class KeyboardState(private val switchActions: SwitchActions) {
         if (savedKeyboardState.isValid) {
             onRestoreKeyboardState(autoCapsFlags, recapitalizeMode)
             savedKeyboardState.isValid = false
+        } else if (manualShiftMode != null) {
+            loadLayout(Alphabet(manualShiftMode, autoCapsFlags, recapitalizeMode))
         } else {
             // Reset keyboard to alphabet mode.
             loadLayout(Alphabet(ShiftMode.UNSHIFT, autoCapsFlags, recapitalizeMode))
