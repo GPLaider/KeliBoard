@@ -310,6 +310,68 @@ fun moveStepsToCharCount(text: CharSequence, steps: Int): Int {
     }
 }
 
+/**
+ * Conservative check whether a grapheme cluster may span the boundary between [charBeforeText]
+ * and the start of [text]. If true, boundaries computed within [text] are unreliable, as the
+ * text may have been cut in the middle of a cluster (e.g. a ZWJ emoji sequence).
+ */
+private fun clusterMayExtendBefore(text: CharSequence, charBeforeText: Int): Boolean {
+    if (Character.isLowSurrogate(text[0])) return true // text starts inside a surrogate pair
+    val codePoint = Character.codePointAt(text, 0)
+    if (codePoint == 0x200D || charBeforeText == 0x200D) return true // zero width joiner joins across the boundary
+    if (codePoint in 0x1F1E6..0x1F1FF && charBeforeText in 0x1F1E6..0x1F1FF) return true // regional indicator parity is unknown
+    if (isHangulLeadingJamo(codePoint) && isHangulLeadingJamo(charBeforeText)) return true
+    if (codePoint in 0x1160..0x11FF || codePoint in 0xD7B0..0xD7FB) return true // Hangul V/T jamo may join a preceding jamo or syllable
+    if (codePoint in 0x1F3FB..0x1F3FF || codePoint in 0xE0020..0xE007F) return true // emoji modifiers and tag characters extend the previous cluster
+    val type = Character.getType(codePoint)
+    return type == Character.NON_SPACING_MARK.toInt() || type == Character.ENCLOSING_MARK.toInt() || type == Character.COMBINING_SPACING_MARK.toInt()
+}
+
+private fun isHangulLeadingJamo(codePoint: Int) = codePoint in 0x1100..0x115F || codePoint in 0xA960..0xA97C
+
+/**
+ * Translates a move of [steps] grapheme clusters in [text] to a UTF-16 char count, or returns
+ * null if the result may be wrong because [text] may have been cut in the middle of a grapheme
+ * cluster at the edge the text was fetched from (e.g. inside a long ZWJ emoji sequence), or
+ * because it does not contain enough clusters.
+ * [charBeforeText] is the code point immediately preceding [text], or null if there is none.
+ */
+fun moveStepsToCharCountChecked(text: CharSequence, steps: Int, charBeforeText: Int?): Int? {
+    if (steps == 0 || text.isEmpty()) return 0
+    val iterator = localBreakIterator
+    iterator.setText(text.toString())
+    var moved = 0
+    if (steps > 0) {
+        // the last cluster may continue beyond the text, so landing on or after its start is unsafe
+        iterator.last()
+        val lastClusterStart = iterator.previous() // never DONE for non-empty text
+        iterator.first()
+        var pos = 0
+        while (moved < steps) {
+            val next = iterator.next()
+            if (next == BreakIterator.DONE) break
+            pos = next
+            moved++
+        }
+        return if (moved < steps || pos >= lastClusterStart) null
+        else pos
+    } else {
+        // if the first cluster may have started before the text, all computed boundaries are unreliable
+        if (charBeforeText != null && clusterMayExtendBefore(text, charBeforeText)) return null
+        iterator.last()
+        var pos = text.length
+        while (moved < -steps) {
+            val prev = iterator.previous()
+            if (prev == BreakIterator.DONE) break
+            pos = prev
+            moved++
+        }
+        // running out of clusters is fine only if there is no earlier text
+        return if (moved < -steps && charBeforeText != null) null
+        else pos - text.length
+    }
+}
+
 fun String.splitOnWhitespace() = SpacedTokens(this).toList()
 
 fun stripTrailingSeparatorsAndConnectors(word: String, spacingAndPunctuations: SpacingAndPunctuations): String {
