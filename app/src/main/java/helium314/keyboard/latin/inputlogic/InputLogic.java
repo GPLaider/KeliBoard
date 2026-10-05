@@ -1428,10 +1428,12 @@ public final class InputLogic {
                     unlearnWord(selection.toString(), inputTransaction.getSettingsValues(), DictionaryFacilitator.UnlearnEvent.BACKSPACE);
                     hasUnlearnedWordBeingDeleted = true;
                 }
-                final int numCharsDeleted = mConnection.getExpectedSelectionEnd()
-                        - mConnection.getExpectedSelectionStart();
-                mConnection.setSelection(mConnection.getExpectedSelectionEnd(),
-                        mConnection.getExpectedSelectionEnd());
+                // Editors such as Firefox can report a backward selection (start > end).
+                final int selectionStart = mConnection.getExpectedSelectionStart();
+                final int selectionEnd = mConnection.getExpectedSelectionEnd();
+                final int numCharsDeleted = Math.abs(selectionEnd - selectionStart);
+                final int deletionEnd = Math.max(selectionStart, selectionEnd);
+                mConnection.setSelection(deletionEnd, deletionEnd);
                 mConnection.deleteTextBeforeCursor(numCharsDeleted);
                 StatsUtils.onBackspaceSelectedText(numCharsDeleted);
             } else {
