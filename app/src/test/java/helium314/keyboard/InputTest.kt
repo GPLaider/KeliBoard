@@ -11,6 +11,7 @@ import android.content.ContextWrapper
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.ProviderInfo
+import android.content.res.Resources
 import android.database.MatrixCursor
 import android.graphics.Paint
 import android.net.Uri
@@ -47,6 +48,7 @@ import helium314.keyboard.latin.utils.SubtypeUtilsAdditional
 import helium314.keyboard.latin.utils.SubtypeLocaleUtils
 import helium314.keyboard.latin.utils.ToolbarMode
 import helium314.keyboard.latin.utils.prefs
+import helium314.keyboard.latin.utils.dpToPx
 import org.junit.runner.RunWith
 import org.mockito.Mockito
 import org.robolectric.Robolectric
@@ -161,6 +163,58 @@ class InputTest {
 
         assertEquals(View.GONE, keyboardSwitcher.emojiPalettesView.visibility)
         assertEquals(KeyboardElement.ALPHABET, keyboardSwitcher.keyboard?.mId?.element)
+    }
+
+    // https://github.com/HeliBorg/HeliBoard/issues/2835
+    @Test fun slightLeftSpacebarDriftInsertsSpace() = assertSpacebarDriftInsertsSpace(-1)
+
+    @Test fun slightRightSpacebarDriftInsertsSpace() = assertSpacebarDriftInsertsSpace(1)
+
+    private fun assertSpacebarDriftInsertsSpace(direction: Int) {
+        prepareSpacebarSwipe()
+        val space = keyboardSwitcher.keyboard!!.getKey(' '.code)!!
+        val x = space.x + space.width / 2
+        val y = space.y + space.height / 2
+        val endX = x + direction * 15.dpToPx(Resources.getSystem())
+
+        touchAt(x, y, MotionEvent.ACTION_DOWN, 1_000L)
+        touchAt(endX, y, MotionEvent.ACTION_MOVE, 1_050L)
+        assertEquals(2, ShadowInputMethodService.selectionStart)
+        touchAt(endX, y, MotionEvent.ACTION_UP, 1_100L)
+
+        assertEquals("ab cd", ShadowInputMethodService.text)
+        assertEquals(3, ShadowInputMethodService.selectionStart)
+    }
+
+    @Test fun horizontalSpacebarSwipeKeepsFineStepsAfterActivation() {
+        prepareSpacebarSwipe()
+        val space = keyboardSwitcher.keyboard!!.getKey(' '.code)!!
+        val x = space.x + space.width / 2
+        val y = space.y + space.height / 2
+        val step = 10.dpToPx(Resources.getSystem())
+
+        touchAt(x, y, MotionEvent.ACTION_DOWN, 1_000L)
+        touchAt(x + 2 * step, y, MotionEvent.ACTION_MOVE, 1_050L)
+        assertEquals(4, ShadowInputMethodService.selectionStart)
+        touchAt(x + step, y, MotionEvent.ACTION_MOVE, 1_100L)
+        assertEquals(3, ShadowInputMethodService.selectionStart)
+        touchAt(x + step, y, MotionEvent.ACTION_UP, 1_150L)
+
+        assertEquals("abcd", ShadowInputMethodService.text)
+        assertEquals(3, ShadowInputMethodService.selectionStart)
+    }
+
+    private fun prepareSpacebarSwipe() {
+        ShadowInputMethodService.text = "abcd"
+        ShadowInputMethodService.selectionStart = 2
+        ShadowInputMethodService.selectionEnd = 2
+        latinIME.onStartInputView(EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            initialSelStart = 2
+            initialSelEnd = 2
+        }, false)
+        latinIME.onUpdateSelection(2, 2, 2, 2, -1, -1)
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
     }
 
     // https://github.com/HeliBorg/HeliBoard/issues/2277
