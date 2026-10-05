@@ -13,6 +13,7 @@ import android.provider.UserDictionary.Words
 import android.service.textservice.SpellCheckerService
 import android.text.TextUtils
 import android.util.LruCache
+import android.util.Patterns
 import android.view.inputmethod.InputMethodManager
 import android.view.textservice.SuggestionsInfo
 import android.view.textservice.TextInfo
@@ -205,7 +206,10 @@ abstract class AndroidWordLevelSpellCheckerSession(private val mService: Android
     }
 
     private fun getSuggestionInfoForUncheckable(text: String, capitalizeType: Int, checkability: Checkabiliy): SuggestionsInfo {
-        if (checkability == Checkabiliy.FIRST_LETTER_UNCHECKABLE || checkability == Checkabiliy.TOO_MANY_NON_LETTERS)
+        if (checkability == Checkabiliy.FIRST_LETTER_UNCHECKABLE
+            || checkability == Checkabiliy.TOO_MANY_NON_LETTERS
+            || checkability == Checkabiliy.TOO_SHORT
+            || checkability == Checkabiliy.EMAIL_OR_URL)
             return AndroidSpellCheckerService.getNotInDictEmptySuggestions(false)
 
         // Checkabiliy.CONTAINS_PERIOD Typo should not be reported when text is a valid word followed by a single period (end of sentence).
@@ -278,6 +282,7 @@ abstract class AndroidWordLevelSpellCheckerSession(private val mService: Android
          */
         private fun getCheckabilityInScript(text: String?, script: String): Checkabiliy {
             if (text.isNullOrEmpty()) return Checkabiliy.TOO_SHORT
+            if (Patterns.WEB_URL.matcher(text).matches()) return Checkabiliy.EMAIL_OR_URL
             if (text.length == 1)
                 return if (isLetterPartOfScript(text.codePointAt(0), script)) Checkabiliy.TOO_SHORT
                 else Checkabiliy.TOO_MANY_NON_LETTERS
