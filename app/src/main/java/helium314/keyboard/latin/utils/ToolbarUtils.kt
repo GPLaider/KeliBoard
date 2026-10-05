@@ -3,6 +3,7 @@ package helium314.keyboard.latin.utils
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Matrix
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
@@ -32,7 +33,30 @@ fun createToolbarKey(context: Context, key: ToolbarKey): ImageButton {
     button.contentDescription = key.name.lowercase().getStringResourceOrName("", context)
     setToolbarButtonActivatedState(button)
     button.setImageDrawable(KeyboardIconsSet.instance.getNewDrawable(key.name, context))
+    setupToolbarIconScale(button)
     return button
+}
+
+fun setupToolbarIconScale(button: ImageButton, normalScaleType: ImageView.ScaleType = ImageView.ScaleType.CENTER) {
+    button.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateToolbarIconScale(button, normalScaleType) }
+    updateToolbarIconScale(button, normalScaleType)
+}
+
+fun updateToolbarIconScale(button: ImageButton, normalScaleType: ImageView.ScaleType = ImageView.ScaleType.CENTER) {
+    val scale = ResourceUtils.getFloatingKeyboardIconScale(button.context, Settings.getValues())
+    if (scale == 1f) {
+        button.scaleType = normalScaleType
+        return
+    }
+    val icon = button.drawable ?: return
+    button.scaleType = ImageView.ScaleType.MATRIX
+    button.imageMatrix = Matrix().apply {
+        setScale(scale, scale)
+        postTranslate(
+            (button.width - button.paddingLeft - button.paddingRight - icon.intrinsicWidth * scale) / 2f,
+            (button.height - button.paddingTop - button.paddingBottom - icon.intrinsicHeight * scale) / 2f
+        )
+    }
 }
 
 fun setToolbarButtonsActivatedStateOnPrefChange(buttonsGroup: ViewGroup, key: String?) {

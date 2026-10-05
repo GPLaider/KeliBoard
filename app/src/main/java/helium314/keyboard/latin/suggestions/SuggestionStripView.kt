@@ -60,8 +60,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
 import kotlin.math.min
 import androidx.core.view.isGone
+import androidx.core.view.forEach
 import helium314.keyboard.latin.utils.onClickToolbarKey
 import helium314.keyboard.latin.utils.onLongClickToolbarKey
+import helium314.keyboard.latin.utils.setupToolbarIconScale
+import helium314.keyboard.latin.utils.updateToolbarIconScale
 
 @SuppressLint("InflateParams")
 class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int) :
@@ -114,6 +117,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
     private val pinnedKeys: ViewGroup = findViewById(R.id.pinned_keys)
     private val suggestionsStrip: ViewGroup = findViewById(R.id.suggestions_strip)
     private val toolbarExpandKey = findViewById<ImageButton>(R.id.suggestions_strip_toolbar_key)
+    private val toolbarExpandScaleType = toolbarExpandKey.scaleType
     private val toolbarArrowIcon = KeyboardIconsSet.instance.getNewDrawable(KeyboardIconsSet.NAME_TOOLBAR_KEY, context)
     private val defaultToolbarBackground: Drawable = toolbarExpandKey.background
     private val enabledToolKeyBackground = GradientDrawable()
@@ -171,6 +175,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         }
 
         updateKeys()
+        setupToolbarIconScale(toolbarExpandKey, toolbarExpandScaleType)
     }
 
     private lateinit var listener: Listener
@@ -200,6 +205,12 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
     // public stuff
 
     val isShowingMoreSuggestionPanel get() = moreSuggestionsView.isShowingInParent
+
+    fun updateIconScale() {
+        updateToolbarIconScale(toolbarExpandKey, toolbarExpandScaleType)
+        toolbar.forEach { if (it is ImageButton) updateToolbarIconScale(it) }
+        pinnedKeys.forEach { if (it is ImageButton) updateToolbarIconScale(it) }
+    }
 
     /** A connection back to the input method. */
     fun setListener(newListener: Listener, inputView: View) {
@@ -523,6 +534,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         copy.scaleY = original.scaleY
         copy.contentDescription = original.contentDescription
         copy.setImageDrawable(original.drawable)
+        setupToolbarIconScale(copy)
         copy.layoutParams = original.layoutParams
         copy.isActivated = original.isActivated
         setupKey(copy, Settings.getValues().mColors)

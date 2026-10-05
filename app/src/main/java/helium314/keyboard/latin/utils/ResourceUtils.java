@@ -94,6 +94,18 @@ public final class ResourceUtils {
         return (int)Math.max(Math.min(keyboardHeight, maxKeyboardHeight), minKeyboardHeight);
     }
 
+    public static float getFloatingKeyboardIconScale(final Context context,
+            final SettingsValues settingsValues) {
+        if (!settingsValues.mIsFloatingKeyboard) return 1f;
+        final float widthScale = (float) settingsValues.mFloatingWidth / getDefaultKeyboardWidth(context);
+        // A hardware keyboard can leave just the floating toolbar visible.
+        final float heightScale = settingsValues.mFloatingHeight > 0
+                ? (float) settingsValues.mFloatingHeight
+                    / getDefaultKeyboardHeight(context.getResources(), settingsValues.mShowsNumberRow)
+                : 1f;
+        return Math.min(1f, Math.min(widthScale, heightScale));
+    }
+
     public static boolean isValidFraction(final float fraction) {
         return fraction >= 0.0f;
     }
