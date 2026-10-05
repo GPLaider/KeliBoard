@@ -13,6 +13,9 @@ import android.content.Intent
 import android.content.pm.ProviderInfo
 import android.database.MatrixCursor
 import android.graphics.Paint
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.RectF
 import android.net.Uri
 import android.provider.MediaStore
 import android.text.InputType
@@ -23,6 +26,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.ImageView
+import android.widget.ImageButton
 import android.widget.TextView
 import helium314.keyboard.event.Event
 import helium314.keyboard.event.HapticEvent
@@ -40,6 +44,8 @@ import helium314.keyboard.latin.RichInputMethodSubtype
 import helium314.keyboard.latin.RichInputMethodManager
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.settings.SettingsSubtype
+import helium314.keyboard.latin.settings.setFloatingKeyboardEnabled
+import helium314.keyboard.latin.settings.setFloatingSize
 import helium314.keyboard.latin.suggestions.SuggestionStripView
 import helium314.keyboard.latin.utils.LayoutType
 import helium314.keyboard.latin.utils.LayoutUtilsCustom
@@ -47,6 +53,7 @@ import helium314.keyboard.latin.utils.SubtypeUtilsAdditional
 import helium314.keyboard.latin.utils.SubtypeLocaleUtils
 import helium314.keyboard.latin.utils.ToolbarMode
 import helium314.keyboard.latin.utils.prefs
+import helium314.keyboard.latin.utils.ResourceUtils
 import org.junit.runner.RunWith
 import org.mockito.Mockito
 import org.robolectric.Robolectric
@@ -703,6 +710,78 @@ class InputTest {
             if (!hadImageAccess) shadowOf(permissionContext).denyPermissions(Manifest.permission.READ_MEDIA_IMAGES)
             ShadowContentResolver.registerProviderInternal("media", previousProvider)
         }
+    }
+
+    // https://github.com/HeliBorg/HeliBoard/issues/2849
+    @Test fun floatingKeyAndToolbarIconsShrinkWithWidthAndHeight() {
+        val prefs = latinIME.prefs()
+        val screenWidth = latinIME.resources.displayMetrics.widthPixels
+        val keys = listOf(Settings.PREF_FLOATING_ENABLED_PREFIX,
+            Settings.PREF_FLOATING_WIDTH_PREFIX, Settings.PREF_FLOATING_HEIGHT_PREFIX).map { it + screenWidth }
+        val original = prefs.all.filterKeys { it in keys }
+        try {
+            setFloatingKeyboardEnabled(latinIME, false)
+            keyboardSwitcher.reloadMainKeyboard()
+            val normal = renderedIconHeights()
+            val defaultWidth = ResourceUtils.getDefaultKeyboardWidth(latinIME)
+            val defaultHeight = ResourceUtils.getDefaultKeyboardHeight(latinIME.resources, Settings.getValues().mShowsNumberRow)
+
+            setFloatingSize(latinIME, defaultWidth * 3 / 4, defaultHeight)
+            setFloatingKeyboardEnabled(latinIME, true)
+            keyboardSwitcher.reloadMainKeyboard()
+            val wide = renderedIconHeights()
+            assertTrue(wide.first < normal.first, "floating functional icon should shrink")
+            assertTrue(wide.second < normal.second, "floating toolbar icon should shrink")
+
+            setFloatingSize(latinIME, defaultWidth / 2, defaultHeight)
+            keyboardSwitcher.reloadMainKeyboard()
+            val narrow = renderedIconHeights()
+            assertTrue(narrow.first < wide.first, "width-only resize should shrink the functional icon")
+            assertTrue(narrow.second < wide.second, "width-only resize should shrink the toolbar icon")
+
+            setFloatingSize(latinIME, defaultWidth * 3 / 4, defaultHeight / 2)
+            keyboardSwitcher.reloadMainKeyboard()
+            val short = renderedIconHeights()
+            assertTrue(short.first < wide.first, "height-only resize should shrink the functional icon")
+            assertTrue(short.second < wide.second, "height-only resize should shrink the toolbar icon")
+
+            setFloatingKeyboardEnabled(latinIME, false)
+            keyboardSwitcher.reloadMainKeyboard()
+            assertEquals(normal, renderedIconHeights(), "docking should restore the original icon sizes")
+        } finally {
+            prefs.edit().apply {
+                keys.forEach { remove(it) }
+                original.forEach { (key, value) ->
+                    when (value) {
+                        is Boolean -> putBoolean(key, value)
+                        is Int -> putInt(key, value)
+                    }
+                }
+            }.commit()
+            keyboardSwitcher.reloadMainKeyboard()
+        }
+    }
+
+    private fun renderedIconHeights(): Pair<Int, Float> {
+        val keyboard = keyboardSwitcher.keyboard!!
+        val view = keyboardSwitcher.mainKeyboardView
+        view.measure(View.MeasureSpec.makeMeasureSpec(keyboard.mId.width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(keyboard.mOccupiedHeight, View.MeasureSpec.EXACTLY))
+        view.layout(0, 0, view.measuredWidth, view.measuredHeight)
+        val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+        try { view.draw(Canvas(bitmap)) } finally { bitmap.recycle() }
+        val keyIcon = keyboard.getKey(KeyCode.DELETE)!!.getIcon(keyboard.mIconsSet, 255)!!
+
+        val strip = keyboardSwitcher.stripContainer.rootView.findViewById<SuggestionStripView>(R.id.suggestion_strip_view)
+        strip.setToolbarVisibility(true)
+        strip.measure(View.MeasureSpec.makeMeasureSpec(keyboard.mId.width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(latinIME.resources.getDimensionPixelSize(R.dimen.config_suggestions_strip_height), View.MeasureSpec.EXACTLY))
+        strip.layout(0, 0, strip.measuredWidth, strip.measuredHeight)
+        val toolbar = strip.findViewById<ViewGroup>(R.id.toolbar)
+        val button = toolbar.getChildAt(0) as ImageButton
+        val bounds = RectF(0f, 0f, button.drawable.intrinsicWidth.toFloat(), button.drawable.intrinsicHeight.toFloat())
+        button.imageMatrix.mapRect(bounds)
+        return keyIcon.bounds.height() to bounds.height()
     }
 
     private fun touchKey(code: Int, action: Int, eventTime: Long = 0L) {
