@@ -516,7 +516,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
     private fun addKeyToPinnedKeys(pinnedKey: ToolbarKey) {
         val original = toolbar.findViewWithTag<ImageButton>(pinnedKey) ?: return
         // copy the original key to a new ImageButton
-        val copy = ImageButton(context, null, R.attr.suggestionWordStyle)
+        val copy = createToolbarKey(context, pinnedKey)
         copy.tag = pinnedKey
         copy.scaleType = original.scaleType
         copy.scaleX = original.scaleX

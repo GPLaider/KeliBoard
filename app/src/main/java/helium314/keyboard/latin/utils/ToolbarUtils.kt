@@ -4,7 +4,6 @@ package helium314.keyboard.latin.utils
 import android.content.Context
 import android.content.SharedPreferences
 import android.view.View
-import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -26,7 +25,7 @@ import java.util.EnumMap
 import java.util.Locale
 
 fun createToolbarKey(context: Context, key: ToolbarKey): ImageButton {
-    val button = ImageButton(context, null, R.attr.suggestionWordStyle)
+    val button = ToolbarKeyButton(context)
     button.scaleType = ImageView.ScaleType.CENTER
     button.tag = key
     button.contentDescription = key.name.lowercase().getStringResourceOrName("", context)
