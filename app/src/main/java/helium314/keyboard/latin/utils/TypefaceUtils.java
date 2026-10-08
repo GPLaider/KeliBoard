@@ -95,4 +95,14 @@ public final class TypefaceUtils {
             return sStringWidthBounds.width();
         }
     }
+
+    // Centered text is positioned by its advance, which can differ from its visible bounds.
+    public static float getCenteredStringWidth(final String string, final Paint paint) {
+        synchronized (sStringWidthBounds) {
+            paint.getTextBounds(string, 0, string.length(), sStringWidthBounds);
+            final float advance = paint.measureText(string);
+            return Math.max(advance - 2 * sStringWidthBounds.left,
+                    2 * sStringWidthBounds.right - advance);
+        }
+    }
 }

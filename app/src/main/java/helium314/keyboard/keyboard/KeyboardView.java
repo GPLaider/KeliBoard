@@ -419,7 +419,10 @@ public class KeyboardView extends View {
                     Drawable bg = key.selectBackgroundDrawable(mKeyBackground, mFunctionalKeyBackground, mSpacebarBackground, mActionKeyBackground);
                     width = Math.min(bg.getBounds().bottom, bg.getBounds().right);
                 } else width = keyWidth;
-                final float ratio = Math.min(1.0f, (width * MAX_LABEL_RATIO) / TypefaceUtils.getStringWidth(label, paint));
+                final float labelWidth = paint.getTextAlign() == Align.CENTER
+                        ? TypefaceUtils.getCenteredStringWidth(label, paint)
+                        : TypefaceUtils.getStringWidth(label, paint);
+                final float ratio = Math.min(1.0f, (width * MAX_LABEL_RATIO) / labelWidth);
                 if (key.needsAutoScale()) {
                     final float autoSize = paint.getTextSize() * ratio;
                     paint.setTextSize(autoSize);
