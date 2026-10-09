@@ -29,6 +29,7 @@ import helium314.keyboard.latin.common.LocaleUtils.constructLocale
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.settings.SettingsSubtype
 import helium314.keyboard.latin.utils.LayoutType
+import helium314.keyboard.latin.utils.LayoutUtils
 import helium314.keyboard.latin.utils.LayoutUtilsCustom
 import helium314.keyboard.latin.utils.POPUP_KEYS_LAYOUT
 import helium314.keyboard.latin.utils.SubtypeLocaleUtils
@@ -200,6 +201,83 @@ f""", // no newline at the end
 
         assertTrue(shown.flatten().any { it.mCode == KeyCode.DPAD })
         assertTrue(hidden.flatten().none { it.mCode == KeyCode.DPAD })
+    }
+
+    @Test fun `UK PC layout follows the physical UK keyboard in every shift state`() {
+        val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(Locale.UK, "pcqwerty", false)
+        val lower = listOf("`1234567890-=", "qwertyuiop[]", "asdfghjkl;'#", "\\zxcvbnm,./")
+        val shifted = listOf("¬!\"£$%^&*()_+", "QWERTYUIOP{}", "ASDFGHJKL:@~", "|ZXCVBNM<>?")
+        for ((element, expected) in listOf(
+            KeyboardElement.ALPHABET to lower,
+            KeyboardElement.ALPHABET_AUTOMATIC_SHIFTED to lower.map { it.uppercase(Locale.UK) },
+            KeyboardElement.ALPHABET_MANUAL_SHIFTED to shifted,
+            KeyboardElement.ALPHABET_SHIFT_LOCKED to shifted,
+        )) {
+            val (_, keys) = buildKeyboard(EditorInfo(), subtype, element)
+            assertEquals(expected, pcCharacterRows(keys), element.name)
+            keys.take(4).flatten().filter { it.mCode >= ' '.code }.forEach {
+                assertEquals(it.mCode.toChar().toString(), it.mLabel, element.name)
+            }
+        }
+    }
+
+    @Test fun `UK PC layout hints and popups use UK shifted symbols`() {
+        val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(Locale.UK, "pcqwerty", false)
+        val (_, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET)
+        for ((code, shifted) in mapOf('`' to '¬', '2' to '"', '3' to '£', '\'' to '@', '#' to '~', '\\' to '|')) {
+            val key = keys.take(4).flatten().single { it.mCode == code.code }
+            assertEquals(shifted.toString(), key.mHintLabel, "Hint for $code")
+            assertTrue(key.mPopupKeys.orEmpty().any { it.mCode == shifted.code }, "Popup for $code")
+        }
+    }
+
+    @Test fun `switching PC layouts between UK and US does not reuse the wrong cached keys`() {
+        val uk = listOf("¬!\"£$%^&*()_+", "QWERTYUIOP{}", "ASDFGHJKL:@~", "|ZXCVBNM<>?")
+        val us = listOf("~!@#$%^&*()_+", "QWERTYUIOP{}|", "ASDFGHJKL:\"", "ZXCVBNM<>?")
+        for (locale in listOf(Locale.US, Locale.UK, Locale.CANADA, Locale.UK, Locale.US)) {
+            val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(locale, "pcqwerty", false)
+            val (_, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET_MANUAL_SHIFTED)
+            assertEquals(if (locale == Locale.UK) uk else us, pcCharacterRows(keys), locale.toLanguageTag())
+        }
+    }
+
+    @Test fun `editing the built-in UK PC layout starts with the displayed UK keys`() {
+        val content = LayoutUtils.getContentWithPlus("pcqwerty", Locale.UK, latinIME)
+        val subtype = SubtypeUtilsAdditional.createEmojiCapableAdditionalSubtype(Locale.UK, "pcqwerty", false)
+        val layoutParams = KeyboardLayoutSet.Params().apply {
+            editorInfo = EditorInfo()
+            this.subtype = RichInputMethodSubtype.get(subtype)
+        }
+        params.mId = KeyboardId(KeyboardElement.ALPHABET_MANUAL_SHIFTED, layoutParams)
+        val rows = LayoutParser.parseJsonString(content).map { row ->
+            row.mapNotNull { it.compute(params)?.toKeyParams(params)?.mCode?.toChar() }.joinToString("")
+        }
+        assertEquals(listOf("¬!\"£$%^&*()_+", "QWERTYUIOP{}", "ASDFGHJKL:@~", "|ZXCVBNM<>?"), rows)
+    }
+
+    @Test fun `a custom PC layout keeps its own symbols for UK English`() {
+        val layoutName = "custom.uk-pc-regression"
+        val layoutFile = LayoutUtilsCustom.getLayoutFile(layoutName, LayoutType.MAIN, latinIME)
+        val subtype = SettingsSubtype(Locale.UK, "").withLayout(LayoutType.MAIN, layoutName).toAdditionalSubtype()
+        try {
+            layoutFile.writeText(LayoutUtils.getContent(LayoutType.MAIN, "pcqwerty", latinIME))
+            LayoutUtilsCustom.onLayoutFileChanged()
+            LayoutParser.clearCache()
+            assertEquals(layoutName, RichInputMethodSubtype.get(subtype).mainLayoutName)
+            val (_, keys) = buildKeyboard(EditorInfo(), subtype, KeyboardElement.ALPHABET_MANUAL_SHIFTED)
+            assertEquals(
+                listOf("~!@#$%^&*()_+", "QWERTYUIOP{}|", "ASDFGHJKL:\"", "ZXCVBNM<>?"),
+                pcCharacterRows(keys),
+            )
+        } finally {
+            layoutFile.delete()
+            LayoutUtilsCustom.onLayoutFileChanged()
+            LayoutParser.clearCache()
+        }
+    }
+
+    private fun pcCharacterRows(keys: List<List<KeyParams>>) = keys.take(4).map { row ->
+        row.filter { it.mCode >= ' '.code }.joinToString("") { it.mCode.toChar().toString() }
     }
 
     @Test fun `cheonjiin number row preserves Samsung four-column alignment`() {
