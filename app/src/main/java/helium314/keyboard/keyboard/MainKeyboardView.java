@@ -39,7 +39,6 @@ import helium314.keyboard.keyboard.internal.GestureTrailsDrawingPreview;
 import helium314.keyboard.keyboard.internal.KeyDrawParams;
 import helium314.keyboard.keyboard.internal.KeyPreviewChoreographer;
 import helium314.keyboard.keyboard.internal.KeyPreviewDrawParams;
-import helium314.keyboard.keyboard.internal.KeyPreviewView;
 import helium314.keyboard.keyboard.internal.PopupKeySpec;
 import helium314.keyboard.keyboard.internal.NonDistinctMultitouchHelper;
 import helium314.keyboard.keyboard.internal.SlidingKeyInputDrawingPreview;
@@ -696,9 +695,6 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
     public void startDisplayLanguageOnSpacebar(final boolean subtypeChanged,
             final int languageOnSpacebarFormatType,
             final boolean hasMultipleEnabledIMEsOrSubtypes) {
-        if (subtypeChanged) {
-            KeyPreviewView.clearTextCache();
-        }
         mLanguageOnSpacebarFormatType = languageOnSpacebarFormatType;
         mHasMultipleEnabledIMEsOrSubtypes = hasMultipleEnabledIMEsOrSubtypes;
         final ObjectAnimator animator = mLanguageOnSpacebarFadeoutAnimator;
