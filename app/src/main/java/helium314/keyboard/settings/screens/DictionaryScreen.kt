@@ -100,7 +100,8 @@ fun DictionaryScreen(
                         types.add(0, stringResource(R.string.internal_dictionary_summary))
                     Text(locale.localizedDisplayName(LocalResources.current))
                     Text(
-                        types.joinToString(", "),
+                        if (types.isEmpty()) stringResource(R.string.dictionary_available)
+                        else types.joinToString(", "),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
