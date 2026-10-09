@@ -9,7 +9,6 @@ package helium314.keyboard.keyboard.internal;
 import android.content.Context;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
-import android.text.TextPaint;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.TypedValue;
@@ -22,8 +21,6 @@ import helium314.keyboard.latin.R;
 import helium314.keyboard.latin.common.StringUtilsKt;
 import helium314.keyboard.latin.settings.Settings;
 
-import java.util.HashSet;
-
 /** The pop up key preview view. */
 // Android Studio complains about TextView, but we're not using tint or auto-size that should be the relevant differences
 public class KeyPreviewView extends TextView {
@@ -32,7 +29,6 @@ public class KeyPreviewView extends TextView {
     public static final int POSITION_RIGHT = 2;
 
     private final Rect mBackgroundPadding = new Rect();
-    private static final HashSet<String> sNoScaleXTextSet = new HashSet<>();
 
     public KeyPreviewView(final Context context, final AttributeSet attrs) {
         this(context, attrs, 0);
@@ -57,21 +53,15 @@ public class KeyPreviewView extends TextView {
                 * Settings.getValues().mFontSizeMultiplier);
         KeyboardTypeface.applyToTextView(this, key.getPreviewLabel(), key.selectPreviewTypeface(drawParams));
         // TODO Should take care of temporaryShiftLabel here.
-        setTextAndScaleX(key.getPreviewLabel());
+        setTextAndFitWidth(key.getPreviewLabel());
     }
 
-    private void setTextAndScaleX(final String text) {
+    private void setTextAndFitWidth(final String text) {
         setTextScaleX(1.0f);
         setText(text);
-        if (sNoScaleXTextSet.contains(text)) {
+        if (TextUtils.isEmpty(text) || StringUtilsKt.isEmoji(text)) {
             return;
         }
-        if (StringUtilsKt.isEmoji(text)) {
-            sNoScaleXTextSet.add(text);
-            return;
-        }
-        // TODO: Override {@link #setBackground(Drawable)} that is supported from API 16 and
-        // calculate maximum text width.
         final Drawable background = getBackground();
         if (background == null) {
             return;
@@ -79,30 +69,11 @@ public class KeyPreviewView extends TextView {
         background.getPadding(mBackgroundPadding);
         final int maxWidth = background.getIntrinsicWidth() - mBackgroundPadding.left
                 - mBackgroundPadding.right;
-        final float width = getTextWidth(text, getPaint());
-        if (width <= maxWidth) {
-            sNoScaleXTextSet.add(text);
-            return;
+        final float width = getPaint().measureText(text);
+        if (maxWidth > 0 && width > maxWidth) {
+            // Preserve letter proportions, and remeasure for the current font and background.
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, getTextSize() * maxWidth / width);
         }
-        setTextScaleX(maxWidth / width);
-    }
-
-    public static void clearTextCache() {
-        sNoScaleXTextSet.clear();
-    }
-
-    private static float getTextWidth(final String text, final TextPaint paint) {
-        if (TextUtils.isEmpty(text)) {
-            return 0.0f;
-        }
-        final int len = text.length();
-        final float[] widths = new float[len];
-        final int count = paint.getTextWidths(text, 0, len, widths);
-        float width = 0;
-        for (int i = 0; i < count; i++) {
-            width += widths[i];
-        }
-        return width;
     }
 
     // Background state set
