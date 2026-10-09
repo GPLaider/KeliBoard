@@ -36,6 +36,12 @@ fun getDictionaryLocales(context: Context): MutableSet<Locale> {
             locales.add(DictionaryInfoUtils.extractLocaleFromAssetsDictionaryFile(dictionary))
         }
     }
+    // Include download-only languages so their dictionary links are reachable from settings.
+    context.assets.open("dictionaries_in_dict_repo.csv").bufferedReader().useLines { lines ->
+        lines.filter { it.isNotBlank() }.forEach { entry ->
+            locales.add(entry.substringAfter(',').substringBefore(',').constructLocale())
+        }
+    }
     return locales
 }
 
