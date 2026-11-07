@@ -65,7 +65,8 @@ class EmojiParser(private val params: KeyboardParams, private val context: Conte
             emoji.getCode(),
             if (emojiPopupSpecs[emoji] != null) EMOJI_HINT_LABEL else null,
             emojiPopupSpecs[emoji],
-            Key.LABEL_FLAGS_FONT_NORMAL,
+            Key.LABEL_FLAGS_FONT_NORMAL or
+                if (params.mId.element == KeyboardElement.EMOJI_EMOTICONS) Key.LABEL_FLAGS_AUTO_SCALE else 0,
             params
         )
     }
