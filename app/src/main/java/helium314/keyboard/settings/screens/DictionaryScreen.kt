@@ -57,7 +57,7 @@ fun DictionaryScreen(
     val enabledLanguages = SubtypeSettings.getEnabledSubtypes(true).map { it.locale().language }
     val cachedDictFolders = DictionaryInfoUtils.getCacheDirectories(ctx).map { it.name }
     val comparer = compareBy<Locale>({ it.language !in enabledLanguages }, { it.toLanguageTag() !in cachedDictFolders }, { it.displayName })
-    val dictionaryLocales = listOf<Locale?>(null) + getDictionaryLocales(ctx).sortedWith(comparer)
+    val dictionaryLocales = listOf<Locale?>(null) + getDictionaryLocales(ctx, includeDownloadable = true).sortedWith(comparer)
     var selectedLocale: Locale? by remember { mutableStateOf(null) }
     var showAddDictDialog by remember { mutableStateOf(false) }
     val dictPicker = dictionaryFilePicker(selectedLocale)
@@ -100,7 +100,8 @@ fun DictionaryScreen(
                         types.add(0, stringResource(R.string.internal_dictionary_summary))
                     Text(locale.localizedDisplayName(LocalResources.current))
                     Text(
-                        types.joinToString(", "),
+                        if (types.isEmpty()) stringResource(R.string.dictionary_available)
+                        else types.joinToString(", "),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
