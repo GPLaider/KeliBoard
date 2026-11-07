@@ -37,7 +37,8 @@ object LayoutParser {
     fun parseLayout(layoutType: LayoutType, params: KeyboardParams, context: Context): MutableList<MutableList<KeyData>> {
         if (layoutType == LayoutType.FUNCTIONAL && !params.mId.element.takesFunctionalKeys)
             return mutableListOf(mutableListOf()) // no functional keys
-        val layoutName = if (layoutType == LayoutType.MAIN) params.mId.subtype.mainLayoutName
+        val layoutName = if (layoutType == LayoutType.MAIN)
+            LayoutUtils.getMainLayoutNameForLocale(params.mId.subtype.mainLayoutName, params.mId.locale)
             else params.mId.subtype.layouts[layoutType]
                 ?: if (layoutType == LayoutType.FUNCTIONAL && params.mId.element.isAlphabet
                     && params.mId.subtype.mainLayoutName == "korean_cheonjiin") "functional_keys_cheonjiin"

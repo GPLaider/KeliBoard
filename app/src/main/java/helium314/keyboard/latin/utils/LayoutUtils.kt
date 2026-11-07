@@ -27,6 +27,9 @@ object LayoutUtils {
     fun getLMainLayoutsForLocales(locales: List<Locale>, context: Context): Collection<String> =
         locales.flatMapTo(HashSet()) { getAvailableLayouts(LayoutType.MAIN, context, it) }.sorted()
 
+    fun getMainLayoutNameForLocale(mainLayoutName: String, locale: Locale): String =
+        if (mainLayoutName == "pcqwerty" && locale.country == "GB") "pcqwerty_uk" else mainLayoutName
+
     /** gets content for built-in (non-custom) layout [layoutName], with fallback to qwerty */
     fun getContent(layoutType: LayoutType, layoutName: String, context: Context): String {
         val layouts = context.assets.list(layoutType.folder)!!
@@ -37,7 +40,7 @@ object LayoutUtils {
     }
 
     fun getContentWithPlus(mainLayoutName: String, locale: Locale, context: Context): String {
-        val content = getContent(LayoutType.MAIN, mainLayoutName, context)
+        val content = getContent(LayoutType.MAIN, getMainLayoutNameForLocale(mainLayoutName, locale), context)
         if (!mainLayoutName.endsWith("+"))
             return content
         // the stuff below will not work if we add "+" layouts in json format
