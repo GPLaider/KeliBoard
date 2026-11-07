@@ -15,11 +15,17 @@ import kotlin.test.assertTrue
 class DictionaryUtilsTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
+    @Test fun uninstalledCatalogLanguagesAreNotOfferedForMultilingualTyping() {
+        val locales = getDictionaryLocales(context)
+        assertFalse("af".constructLocale() in locales)
+        assertFalse("cy".constructLocale() in locales)
+    }
+
     // https://github.com/HeliBorg/HeliBoard/issues/1705
     @Test fun downloadOnlyMainDictionaryCanBeFoundWithoutInstallingIt() {
         val locale = "af".constructLocale()
         assertTrue(getKnownDictionariesForLocale(locale, context).any { it.second.endsWith("/main_af.dict") })
-        assertTrue(locale in getDictionaryLocales(context))
+        assertTrue(locale in getDictionaryLocales(context, includeDownloadable = true))
         val (files, hasInternal) = getUserAndInternalDictionaries(context, locale)
         assertTrue(files.isEmpty())
         assertFalse(hasInternal)
@@ -28,7 +34,7 @@ class DictionaryUtilsTest {
     @Test fun downloadOnlyEmojiDictionaryCanBeFoundWithoutInstallingIt() {
         val locale = "cy".constructLocale()
         assertTrue(getKnownDictionariesForLocale(locale, context).any { it.second.endsWith("/emoji_cy.dict") })
-        assertTrue(locale in getDictionaryLocales(context))
+        assertTrue(locale in getDictionaryLocales(context, includeDownloadable = true))
         val (files, hasInternal) = getUserAndInternalDictionaries(context, locale)
         assertTrue(files.isEmpty())
         assertFalse(hasInternal)
@@ -44,7 +50,7 @@ class DictionaryUtilsTest {
     }
 
     @Test fun dictionaryListIncludesCatalogLocaleVariantsWithoutUnrelatedLanguages() {
-        val locales = getDictionaryLocales(context)
+        val locales = getDictionaryLocales(context, includeDownloadable = true)
         assertTrue("en_US".constructLocale() in locales)
         assertTrue("en_GB".constructLocale() in locales)
         assertFalse("zz".constructLocale() in locales)

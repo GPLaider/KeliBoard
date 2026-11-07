@@ -20,7 +20,8 @@ import helium314.keyboard.settings.dialogs.ConfirmationDialog
 import java.io.File
 import java.util.Locale
 
-fun getDictionaryLocales(context: Context): MutableSet<Locale> {
+/** Installed dictionary locales, optionally including catalog entries for dictionary management. */
+fun getDictionaryLocales(context: Context, includeDownloadable: Boolean = false): MutableSet<Locale> {
     val locales = HashSet<Locale>()
 
     // get cached dictionaries: extracted or user-added dictionaries
@@ -36,10 +37,12 @@ fun getDictionaryLocales(context: Context): MutableSet<Locale> {
             locales.add(DictionaryInfoUtils.extractLocaleFromAssetsDictionaryFile(dictionary))
         }
     }
-    // Include download-only languages so their dictionary links are reachable from settings.
-    context.assets.open("dictionaries_in_dict_repo.csv").bufferedReader().useLines { lines ->
-        lines.filter { it.isNotBlank() }.forEach { entry ->
-            locales.add(entry.substringAfter(',').substringBefore(',').constructLocale())
+    // The multilingual typing picker must continue to offer installed dictionaries only.
+    if (includeDownloadable) {
+        context.assets.open("dictionaries_in_dict_repo.csv").bufferedReader().useLines { lines ->
+            lines.filter { it.isNotBlank() }.forEach { entry ->
+                locales.add(entry.substringAfter(',').substringBefore(',').constructLocale())
+            }
         }
     }
     return locales
