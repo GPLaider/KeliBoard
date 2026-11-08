@@ -36,6 +36,8 @@ The [first hosted run](https://github.com/GPLaider/KeliBoard/actions/runs/425053
 passed the unit-test job, then failed before the device test because
 `sdkmanager` was not on PATH. The workflow now explicitly initializes Android
 SDK tools with `android-actions/setup-android` before package installation.
+The second run found that this action's default obsolete `tools` package is
+no longer available; setup now requests only `platform-tools`.
 See the PR's latest checks for the hosted result; local API 35 results alone
 do not establish a hosted CI pass. No physical device was
 used in this continuation; no physical typing/settings pass is claimed. No
