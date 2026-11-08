@@ -31,8 +31,13 @@ All three APK hashes, unique evidence run IDs and original settings are in the
 per-run JSON files. Timeout diagnostics and current-run evidence isolation were
 added during this continuation.
 
-Hosted GitHub Actions execution is pending publication of this branch. The
-local API 35 result does not claim a hosted CI pass. No physical device was
+Hosted validation is tracked in [PR #15](https://github.com/GPLaider/KeliBoard/pull/15).
+The [first hosted run](https://github.com/GPLaider/KeliBoard/actions/runs/42505387801)
+passed the unit-test job, then failed before the device test because
+`sdkmanager` was not on PATH. The workflow now explicitly initializes Android
+SDK tools with `android-actions/setup-android` before package installation.
+See the PR's latest checks for the hosted result; local API 35 results alone
+do not establish a hosted CI pass. No physical device was
 used in this continuation; no physical typing/settings pass is claimed. No
 Google Cloud authentication, billing setup or remote device reservation occurred.
 

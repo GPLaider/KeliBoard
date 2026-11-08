@@ -68,6 +68,9 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v3
 
+      - name: Set up Android SDK tools
+        uses: android-actions/setup-android@v3
+
       - name: Install build SDK and NDK
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.0.13004108'
 
