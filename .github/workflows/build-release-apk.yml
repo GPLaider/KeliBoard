@@ -1,0 +1,51 @@
+name: Build release APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'release/**'
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Install Android build tools
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.0.13004108'
+      - name: Test and build unsigned release
+        run: ./gradlew testRunTestsUnitTest :app:assembleRelease :app:lintVitalRelease
+      - name: Record source and unsigned APK checksum
+        run: |
+          git rev-parse HEAD > app/build/outputs/apk/release/SOURCE_COMMIT.txt
+          cd app/build/outputs/apk/release
+          sha256sum *.apk > SHA256SUMS-unsigned.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-unsigned
+          path: |
+            app/build/outputs/apk/release/
+            app/build/outputs/mapping/release/
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-test-results
+          path: |
+            app/build/reports/tests/testRunTestsUnitTest/
+            app/build/test-results/testRunTestsUnitTest/
+            app/build/reports/lint-results-release*
+          retention-days: 7

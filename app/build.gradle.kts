@@ -15,8 +15,8 @@ android {
         applicationId = "io.github.gplaider.keliboard"
         minSdk = 21
         targetSdk = 36
-        versionCode = 4019
-        versionName = "4.0.1"
+        versionCode = 4020
+        versionName = "4.0.2"
         ndk {
             abiFilters.clear()
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))

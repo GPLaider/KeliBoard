@@ -1,0 +1,6 @@
+Fix cursor swipes across emoji and combined characters, reverse-selection deletion, and accidental spacebar cursor movement.
+Preserve Shift and Caps Lock when switching languages.
+Improve emoji glyph filtering, recent emoji grids, emoticon labels, and key previews.
+Correct UK PC symbols, toolbar long-press timing, floating toolbar scaling, and downloadable dictionary languages.
+Avoid spell-checking single letters and URLs.
+Add automated device smoke tests for keyboard input and settings.
