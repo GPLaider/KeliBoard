@@ -15,12 +15,19 @@ object SupportedEmojis {
     fun load(context: Context) {
         determineMaxSdk(context)
         val maxSdk = context.prefs().getInt(Settings.PREF_EMOJI_MAX_SDK, 0)
+        val paint = Paint().apply {
+            typeface = KeyboardTypeface.emojiTypeface() ?: KeyboardTypeface.customTypeface()
+        }
         unsupportedEmojis.clear()
         context.assets.open("emoji/minApi.txt").reader().readLines().forEach {
             val s = it.split(" ")
             val minApi = s.first().toInt()
-            if (minApi > maxSdk)
-                unsupportedEmojis.addAll(s.drop(1))
+            s.drop(1).forEach { emoji ->
+                // A supported newer emoji does not guarantee that every older ZWJ sequence
+                // renders as one glyph, especially with custom or vendor emoji fonts.
+                if (minApi > maxSdk || Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !paint.hasGlyph(emoji))
+                    unsupportedEmojis.add(emoji)
+            }
         }
     }
 
