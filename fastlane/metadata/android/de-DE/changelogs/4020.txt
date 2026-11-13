@@ -1,0 +1,2 @@
+NEUER SIGNATURSCHLÜSSEL: Ältere stabile Installationen können nicht direkt aktualisiert werden. Dies betrifft auch die derzeitigen F-Droid-Builds mit Entwicklersignatur. Vor der Deinstallation eine Sicherung unter „Erweitert“ erstellen. Danach 4.0.2 installieren und die Sicherung wiederherstellen. Die Deinstallation löscht App-Daten. Details: Release-Hinweise.
+Verbesserungen an Cursor, Auswahl, Emoji, Tastenvorschau und Layouts; korrigierte HTML-Tags im deutschen Beschreibungstext.

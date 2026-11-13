@@ -1,6 +1,2 @@
-Fix cursor swipes across emoji and combined characters, reverse-selection deletion, and accidental spacebar cursor movement.
-Preserve Shift and Caps Lock when switching languages.
-Improve emoji glyph filtering, recent emoji grids, emoticon labels, and key previews.
-Correct UK PC symbols, toolbar long-press timing, floating toolbar scaling, and downloadable dictionary languages.
-Avoid spell-checking single letters and URLs.
-Add automated device smoke tests for keyboard input and settings.
+NEW SIGNING KEY: older stable installs cannot update directly, including F-Droid's developer-signed builds. Back up in Settings > Advanced > Backup and restore before uninstalling; install 4.0.2 and restore. Uninstalling deletes app data. See the release notice.
+Fix cursor/selection, Shift/Caps Lock, emoji/emoticon rendering, key previews, UK PC symbols, toolbar timing/scaling, dictionary languages, spell checking, and German listing HTML. Add real keyboard input/settings smoke tests.

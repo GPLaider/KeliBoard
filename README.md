@@ -9,6 +9,8 @@ Korean support is a flagship feature, not the limit of the project. KeliBoard is
 
 [Download the latest APK](https://github.com/GPLaider/KeliBoard/releases/latest)
 
+**4.0.2 signing-key change:** older stable installations cannot update directly. Back up your settings before uninstalling, then install 4.0.2 and restore your backup. The current F-Droid recipe also uses the developer's signature. Read the [migration notice and certificate fingerprints](docs/release-signing.md).
+
 ## Why KeliBoard?
 
 - Active downstream maintenance of public HeliBoard issues
