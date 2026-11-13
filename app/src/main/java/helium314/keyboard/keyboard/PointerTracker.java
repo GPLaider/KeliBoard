@@ -104,6 +104,8 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
     private static PointerTrackerParams sParams;
     private static final int sPointerStep = KtxKt.dpToPx(10, Resources.getSystem());
     private static final int sVerticalPointerStep = 2 * sPointerStep;
+    // Require deliberate movement to start a spacebar swipe, then allow finer cursor steps.
+    private static final int sSpaceSwipeActivationDistance = 2 * sPointerStep;
     private static GestureStrokeRecognitionParams sGestureStrokeRecognitionParams;
     private static GestureStrokeDrawingParams sGestureStrokeDrawingParams;
 
@@ -990,6 +992,9 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
             int stepsX = dX / sPointerStep;
             if (stepsX != 0 && !mInVerticalSwipe) {
                 if (!mInHorizontalSwipe) {
+                    // Small finger drift while tapping the spacebar must still insert a space.
+                    if (abs(dX) < sSpaceSwipeActivationDistance)
+                        return;
                     sTimerProxy.cancelKeyTimersOf(this);
                     mInHorizontalSwipe = true;
                 } else if (oneShotSwipe(sv.mSpaceSwipeHorizontal)) return;
