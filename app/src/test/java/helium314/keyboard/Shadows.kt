@@ -146,9 +146,9 @@ class ShadowInputMethodService : ShadowService() {
         val committedTexts = mutableListOf<CharSequence>()
 
         // convenience for access
-        val textBeforeCursor get() = text.substring(0, selectionStart)
-        val textAfterCursor get() = text.substring(selectionEnd)
-        val selectedText get() = text.substring(selectionStart, selectionEnd)
+        val textBeforeCursor get() = text.substring(0, minOf(selectionStart, selectionEnd))
+        val textAfterCursor get() = text.substring(maxOf(selectionStart, selectionEnd))
+        val selectedText get() = text.substring(minOf(selectionStart, selectionEnd), maxOf(selectionStart, selectionEnd))
         val cursor get() = if (selectionStart == selectionEnd) selectionStart else -1
 
         // composingText should return everything, but RichInputConnection.mComposingText only returns up to cursor
@@ -196,7 +196,7 @@ class ShadowInputMethodService : ShadowService() {
             if (textAfterCursorAvailable) textAfterCursor.take(p0) else null
         // pretty clear
         override fun getSelectedText(p0: Int): CharSequence? = if (selectionStart == selectionEnd) null
-        else text.substring(selectionStart, selectionEnd).take(selectedTextLimit)
+        else selectedText.take(selectedTextLimit)
         // inserts text at cursor (right?), and sets it as composing text
         // this REPLACES currently composing text (even if at a different position)
         // moves the cursor: positive means relative to composing text start, negative means relative to start
