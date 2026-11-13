@@ -120,6 +120,33 @@ class InputLogicTest {
         assertEquals("there", composingText)
     }
 
+    @Test fun deleteForwardSelectionPreservesSurroundingText() {
+        setText("hello there world")
+        setCursorPosition(6, 11)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("hello  world", text)
+        assertEquals(6, cursor)
+    }
+
+    // https://github.com/HeliBorg/HeliBoard/issues/2848
+    @Test fun deleteBackwardSelectionPreservesSurroundingText() {
+        setText("hello there world")
+        setCursorPosition(11, 6)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("hello  world", text)
+        assertEquals(6, cursor)
+    }
+
+    @Test fun deleteBackwardSelectionOfWholeText() {
+        setText("hello there")
+        setCursorPosition(text.length, 0)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("", text)
+        assertEquals(0, cursor)
+        input('a')
+        assertEquals("a", text)
+    }
+
     @Test fun rapidBackspaceDoesNotReuseDroppedComposingRegion() {
         setText("hello ")
         fun pressDelete() = latinIME.onEvent(Event.createSoftwareKeypressEvent(
