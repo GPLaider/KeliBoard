@@ -154,6 +154,12 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
     public void loadKeyboard(final EditorInfo editorInfo, final SettingsValues settingsValues,
             final int currentAutoCapsState, @Nullable final RecapitalizeMode currentRecapitalizeState,
             KeyboardLayoutSet.InternalAction internalAction) {
+        loadKeyboard(editorInfo, settingsValues, currentAutoCapsState, currentRecapitalizeState, internalAction, false);
+    }
+
+    public void loadKeyboard(final EditorInfo editorInfo, final SettingsValues settingsValues,
+            final int currentAutoCapsState, @Nullable final RecapitalizeMode currentRecapitalizeState,
+            KeyboardLayoutSet.InternalAction internalAction, final boolean preserveManualShift) {
         final KeyboardLayoutSet.Builder builder = new KeyboardLayoutSet.Builder(
                 mThemeContext, editorInfo);
         final int keyboardWidth = ResourceUtils.getKeyboardWidth(mThemeContext, settingsValues);
@@ -171,7 +177,8 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
                 .setInternalAction(internalAction)
                 .build();
         try {
-            mState.onLoadKeyboard(currentAutoCapsState, currentRecapitalizeState, settingsValues.mOneHandedModeEnabled);
+            mState.onLoadKeyboard(currentAutoCapsState, currentRecapitalizeState, settingsValues.mOneHandedModeEnabled,
+                    preserveManualShift);
         } catch (KeyboardLayoutSet.Companion.KeyboardLayoutSetException e) {
             Log.e(TAG, "loading keyboard failed: " + e.getKeyboardId(), e.getCause());
             try {
@@ -184,7 +191,7 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
                         .setEmojiKeyEnabled(settingsValues.mShowsEmojiKey)
                         .setDpadKeyEnabled(settingsValues.mShowsDpadKey)
                         .build();
-                mState.onLoadKeyboard(currentAutoCapsState, currentRecapitalizeState, false);
+                mState.onLoadKeyboard(currentAutoCapsState, currentRecapitalizeState, false, preserveManualShift);
                 showToast("error loading the keyboard, falling back to defaults", false);
             } catch (KeyboardLayoutSet.Companion.KeyboardLayoutSetException e2) {
                 Log.e(TAG, "even fallback to defaults failed: " + e2.getKeyboardId(), e2.getCause());
@@ -540,11 +547,16 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
     }
 
     public void reloadMainKeyboard() {
+        reloadMainKeyboard(false);
+    }
+
+    public void reloadMainKeyboard(final boolean preserveManualShift) {
         // Reload the entire keyboard, and switch to the previous layout
         final boolean wasEmoji = isShowingEmojiPalettes();
         final boolean wasClipboard = isShowingClipboardHistory();
         loadKeyboard(mLatinIME.getCurrentInputEditorInfo(), Settings.getValues(),
-                mLatinIME.getCurrentAutoCapsState(), mLatinIME.getCurrentRecapitalizeState(), null);
+                mLatinIME.getCurrentAutoCapsState(), mLatinIME.getCurrentRecapitalizeState(), null,
+                preserveManualShift);
         if (wasEmoji) {
             setEmojiKeyboard();
         } else if (wasClipboard) {
