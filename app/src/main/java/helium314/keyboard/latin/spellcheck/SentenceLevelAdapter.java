@@ -6,6 +6,8 @@
 
 package helium314.keyboard.latin.spellcheck;
 
+import android.util.Patterns;
+
 import android.content.res.Resources;
 import android.view.textservice.SentenceSuggestionsInfo;
 import android.view.textservice.SuggestionsInfo;
@@ -122,9 +124,19 @@ public class SentenceLevelAdapter {
         final int start = -1;
         final int end = originalText.length();
         final ArrayList<SentenceWordItem> wordItems = new ArrayList<>();
+        final var urlMatcher = Patterns.WEB_URL.matcher(originalText);
+        boolean hasUrl = urlMatcher.find();
         int wordStart = wordIterator.getBeginningOfNextWord(originalText, start);
         int wordEnd = wordIterator.getEndOfWord(originalText, wordStart);
         while (wordStart <= end && wordEnd != -1 && wordStart != -1) {
+            while (hasUrl && urlMatcher.end() <= wordStart) {
+                hasUrl = urlMatcher.find();
+            }
+            if (hasUrl && urlMatcher.start() <= wordStart && wordStart < urlMatcher.end()) {
+                // Check the whole link together instead of flagging its scheme, host or path.
+                wordStart = urlMatcher.start();
+                wordEnd = urlMatcher.end();
+            }
             if (wordEnd >= start && wordEnd > wordStart) {
                 final TextInfo ti = new TextInfo(originalText, wordStart,
                         wordEnd, cookie, originalText.subSequence(wordStart, wordEnd).hashCode());
