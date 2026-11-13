@@ -55,6 +55,11 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             applicationIdSuffix = ".debug"
         }
+        create("smoke") { // isolated install for device tests; never replaces a user's keyboard
+            initWith(getByName("debugNoMinify"))
+            applicationIdSuffix = ".smoke"
+            matchingFallbacks += "debugNoMinify"
+        }
 
         androidComponents.onVariants { variant: ApplicationVariant ->
             if (variant.buildType == "debug") {

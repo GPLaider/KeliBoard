@@ -182,6 +182,8 @@ class KeyboardAccessibilityNodeProvider<KV : KeyboardView>(
         val keyDescription = getKeyDescription(key)
         val boundsInParent = key.hitBox
         // Calculate the key's in-screen bounds.
+        // The host may have been queried before layout or moved since the root was cached.
+        updateParentLocation()
         mTempBoundsInScreen.set(boundsInParent)
         mTempBoundsInScreen.offset(CoordinateUtils.x(mParentLocation), CoordinateUtils.y(mParentLocation))
         val boundsInScreen = mTempBoundsInScreen
